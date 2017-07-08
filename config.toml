@@ -1,4 +1,15 @@
-baseURL = "http://example.org/"
+baseURL = "http://swelljoe.com/"
 languageCode = "en-us"
 title = "I've done some things"
 theme = "beautifulhugo"
+
+[Params]
+  rss = true
+  logo = "img/beard.png"
+
+[Author]
+  name = "Joe Cooper"
+  email = "swelljoe@gmail.com"
+  github = "swelljoe"
+  twitter = "swelljoe"
+
