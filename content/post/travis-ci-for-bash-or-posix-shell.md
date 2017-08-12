@@ -12,7 +12,7 @@ POSIX Shell, on the other hand, just isn't very easy to test. And, realistically
 
 Instead of learning my way around a shell testing harness and library, I decided to use something I already know. Perl has excellent support for calling out to external programs and capturing output and return values, so it's easy to call shell scripts and capture the results.
 
-Perl also has the `prove` command, which is a test runner that works with the TAP output provided by the various `Test::` modules in core and in CPAN. So, all I have to do for basic testing of shell scripts is write a shell script that calls it using backticks or the `system()` function, and output results based on that.
+Perl also has the `prove` command, which is a test runner that works with the TAP output provided by the various `Test::` modules in core and in CPAN. So, all I have to do for basic testing of a shell script is to write a Perl script that calls it using backticks or the `system()` function, and output results based on that.
 
 # Static Analysis
 
@@ -124,7 +124,7 @@ For example, for a basic functional test, I can test to be sure the usage summar
  ok( grep { /^Usage:/ } @usage );
 ```
 
-Unit testing the Virtualmin installer isn't currently possible because it can't be sourced the script without actually running it. But, I've pulled a large percentage, about 2/3rds, of the functions out into their own projects, which get merged into a function library called `slib` (for `shell library`, because I'm super creative), and this script *can* be sourced and unit tested.
+Unit testing the Virtualmin installer isn't currently possible because it can't be sourced without actually running it. But, I've pulled a large percentage, about 2/3rds, of the functions out into their own projects, which get merged into a function library called `slib` (for `shell library`, because I'm super creative), and this script *can* be sourced and unit tested.
 
 ## A Simple Unit Test
 
@@ -153,14 +153,14 @@ use strict;
 use warnings;
 use 5.010;
 
-use Test::Simple tests => 2;
+use Test::Simple tests => 3;
 
-my @res = `sh t/run.sh 'is_fully_qualified localhost.localdomain'`;
-ok( $res[0] != 0 );
-@res = `sh t/run.sh 'is_fully_qualified dootdoot.com'`;
-ok( $res[0] == 0 );
-@res = `sh t/run.sh 'is_fully_qualified doot'`;
-ok( $res[0] != 0 );
+my ($err, $res) = `sh t/run.sh 'is_fully_qualified localhost.localdomain'`;
+ok( $err != 0 );
+($err, $res) = `sh t/run.sh 'is_fully_qualified dootdoot.com'`;
+ok( $err == 0 );
+($err, $res) = `sh t/run.sh 'is_fully_qualified doot'`;
+ok( $err != 0 );
 
 ```
 
@@ -179,6 +179,8 @@ But, you could use the framework above with Ruby, or Python, or whatever scripti
 # Coverage Reports
 
 One last little thing. A good testing framework will also have coverage reporting. Things like `Devel::Cover` won't work for shell scripts, obviously. But, we can whip up something stupid but functional with a regex to pull out the names of the functions in our library (now we've got two problems) and do the same for the functions called in our tests.
+
+This program requires List::MoreUtils which is (oddly) not in Perl core, but it's available in every major Linux distribution's package repositories and from CPAN.
 
 ```perl
 #!/usr/bin/env perl
@@ -229,7 +231,7 @@ for my $f (@missing) {
 }
 ```
 
-I'm not going to go into too much detail about what this is doing, but it's a useful little script if using the above testing micro-framework. Perhaps most importantly for now, is that it's small enough to bundle with all of my scripts and shell libraries, since the total testing infrastructure only requires two small scripts. No need to make a package or add extra dependencies to the Travis CI configuration.
+I'm not going to go into detail about what this is doing, but it's a useful little script if using the above testing micro-framework. Perhaps most importantly, for now, is that it's small enough to bundle with all of my scripts and shell libraries, since the total testing infrastructure only requires two small scripts. So, there's no need to make a package or add extra dependencies to the Travis CI configuration.
 
 Ideally this would output something compatible with Devel::Cover or be able to export to Coveralls or similar test coverage tools. But, for my purposes, I've spent an afternoon on the problem of "we need better testing tools for our shell scripts", and there are many other projects demanding my time, so I'm gonna call it done for now.
 
