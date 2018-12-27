@@ -235,6 +235,23 @@ I'm not going to go into detail about what this is doing, but it's a useful litt
 
 Ideally this would output something compatible with Devel::Cover or be able to export to Coveralls or similar test coverage tools. But, for my purposes, I've spent an afternoon on the problem of "we need better testing tools for our shell scripts", and there are many other projects demanding my time, so I'm gonna call it done for now.
 
+# A Python/pytest Addendum (12/23/2018)
+
+I recently wanted to add some tests to shell scripts in a project that uses Python, but not Perl, so I figured it was a good time to figure out how to do this with Python.
+
+As expected, it's not much different. Here's roughly the code I ended up with:
+
+```python
+import pytest
+import subprocess
+
+def test_shellcheck():
+  res = subprocess.run(["/usr/bin/shellcheck", "main.py"])
+  assert res.returncode == 0
+```
+
+Super simple, though it requires a somewhat recent Python for the subprocess.run method. Earlier versions could use the `subprocess.Popen` method, which is a bit more verbose to use.
+
 # References
 
 [Shellcheck](https://www.shellcheck.net/)
