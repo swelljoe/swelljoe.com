@@ -1,7 +1,7 @@
 ---
 title: "Unit Testing and Travis CI For Bash Or POSIX Shell"
 date: 2017-08-11T20:40:27-05:00
-draft: false
+draft: true
 ---
 
 Recently I've been working on getting some of our projects working with Travis CI, so that we'll know about regressions in our code. Our software is a a diverse collection of Perl, JavaScript, a tiny bit of Python and C, and an uncomfortably large amount of POSIX shell code. Things are easy for Perl, the language of choice for most of Virtualmin and Webmin: It is easy to test, has great modules, a great test runner, and great tools for parsing and presenting the output. And, of course, Travis CI has good support for it, too.
