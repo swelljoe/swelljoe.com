@@ -1,4 +1,4 @@
-baseURL = "http://swelljoe.com/"
+baseURL = "https://swelljoe.com/"
 languageCode = "en-us"
 title = "I've done some things"
 theme = "paper"
