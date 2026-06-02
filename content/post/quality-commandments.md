@@ -14,7 +14,7 @@ In the literature for software security there is the concept of "defense in dept
 
 At this time, I don't think you can produce code with agents that is notably higher quality than code you could produce by yourself, you can just produce a lot more of it. You probably don't need to know the specific language all that well (I don't know Rust very well, but use it heavily with agents), but I believe you need to understand the shape and scope of the problems you're trying to solve with code in order to recognize when the agent has gone off the rails and is making a mess of it. I believe you still need to have some understanding of what good code looks like to know whether an agent is producing it, even as the models have gotten so good that most of the code they produce is OK-to-good. A big pile of code that is merely OK is probably a failed project, as it'll have security or reliability bugs that make it unfit for purpose, and you might not find out until it leads to catastrophic loss.
 
-I needed more than three rules for this, so I've come up with Ten Commandments that summarize how I code with agents.
+I needed more than three laws for this, so I've come up with Ten Commandments that summarize how I code with agents.
 
 Quality Commandments
 --------------------

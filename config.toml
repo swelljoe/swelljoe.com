@@ -1,7 +1,7 @@
 baseURL = "http://swelljoe.com/"
 languageCode = "en-us"
 title = "I've done some things"
-theme = "beautifulhugo"
+theme = "paper"
 
 [Params]
   rss = true
