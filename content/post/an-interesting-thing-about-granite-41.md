@@ -20,11 +20,9 @@ In short: Granite 4.1 is limted but careful, in a way I don't think any other sm
 
 Another example: I asked Granite questions about IEC 62443-4-1 (a secure software development lifecycle standard commonly used for industrial automation and control systems, which I've been researching for my job at the robot factory), and it gave me the following notice at the end:
 
-```
-## Note on Sources
-
-Because IEC 62443‑4‑1 is a proprietary standard, public web searches via the Brave Search tools did not return freely accessible full‑text excerpts. The summary above reflects the publicly known structure and requirement categories as described in official abstracts, industry whitepapers, and secondary documentation (e.g., NIST’s cross‑walk to IEC 62443). For precise clause numbers, exact wording, and any normative annexes, consult the purchased standard document or an authorized institutional copy.
-```
+> ## Note on Sources
+> 
+> Because IEC 62443‑4‑1 is a proprietary standard, public web searches via the Brave Search tools did not return freely accessible full‑text excerpts. The summary above reflects the publicly known structure and requirement categories as described in official abstracts, industry whitepapers, and secondary documentation (e.g., NIST’s cross‑walk to IEC 62443). For precise clause numbers, exact wording, and any normative annexes, consult the purchased standard document or an authorized institutional copy.
 
 No other model, small or large, qualified their answer in this way, or made such a strong effort to direct the reader to sources. And, the answer it gave was excellent. It was concise, clear, and focused more on specific and actionable details than Qwen 3.6 (27B at 8 bits) or Gemma 4 (31B at 8-bits). It seems weaker on other metrics, and the benchmarks they've published mostly compare to earlier Granite models, so I'm not sure where it fits in the overall landscape. But, I think a small model that seems tuned for telling the truth and backing it up is an interesting turn.
 
