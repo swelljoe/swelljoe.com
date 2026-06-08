@@ -6,7 +6,7 @@ draft: false
 
 OK, so Mythos finds really challenging security bugs, right? That's why it's cordoned off from the hoi polloi, to protect the world from such a powerful finder of exploits.
 
-I am skeptical of the reasons given publicly, I suspect it's really just so much more expensive to operate than their current models that they don't want to offer it broadly, yet, given the difficulty they've had growing capacity to keep up with use. But, are they telling the truth about how good it is at finding security vulnerabilities?
+I am skeptical of the reasons given publicly, I suspect it's really just so much more expensive to operate than their current models that they don't want to offer it broadly, yet, given the difficulty they've had growing capacity to keep up with use. But, are they telling the truth about how good it is at finding security vulnerabilities or is it just more hype?
 
 A while back, I built a tool to automate bug hunting in my own projects called [Nelson](https://github.com/swelljoe/nelson), and I'd already noticed there are surprising differences in the various models and how effectively they identify bugs. But, I wanted hard numbers. So, I (actually mostly Claude) cooked up a benchmark suite that borrows some code from Nelson.
 
@@ -36,6 +36,8 @@ Click for the full HTML report.
 
 Note GPT 5.5 Pro is at the top of the leaderboard only because it blew through $100 budget after only completing four cases, so 2/4 is 50%. And, a couple of other results, both Qwen models, are skewed upward in the detect % ranking because of failure to complete all cases.
 
+Updated on June 7th, 2026 to add Gemma 4 models, and MiniMax M3. Gemma 4 MoE somehow moves into a leading position, by detecting 4/9 bugs with 100% precision (same as MiMo and GPT 5.5, and better than Google's leading commercial models), though it has the caveat that it got multiple attempts because `llama-server` kept crashing or otherwise failed in a way that the model got another attempt. I suspect other models would also fare better with a few extra tries. I'll do a version of this benchmark with multiple attempts soon (minus the really expensive models, because I'm not made of money and we already know they're pretty good). That's why it appears as 3/7 on the chart...but, it found another bug while I was fiddling with `llama-server` configuration trying to get the two failed runs to complete with that model. The bug it found during that fiddling was a hard bug that *only* Opus found, until Gemma 4 also found it.
+
 Surprises
 =========
 
@@ -51,11 +53,13 @@ Laguna M.1 also failed to find any of the known vulnerabilities but did report a
 
 I don't have any reason to ever use Haiku or Sonnet, at least for security audits. They're not great at anything and they're not really all that cheap. Haiku, in particular, made up for its low price by burning tokens at a prodigious rate. 1.6M per case, on average, more than twice the next contender (self-hosted Qwen 3.6 at 733k). MiMo and DeepSeek are both very cheap and very good, might as well use those if you want a cheap LLM.
 
+June 7 edit: Check out the MoE Gemma 4 result and the note about the "off baseline" runs. Crazy, right? I'm currently running a round of benchmarks of just Gemma 4 (dense and MoE) to see if it replicates or if it's a total fluke that it found a really hard bug. I'll note that the MoE gets "lost" far more often than any other model. It gets into a loop, looking at the same bunch of lines (sometimes the *right* set of lines) over and over until it times out. That was the failure mode of the two cases that got repeated, and it's the failure mode I'm seeing on about 30% of cases in the new benchmark of just Gemma models. So, even though it's the smallest model to find 4 of 9 bugs in this corpus, it's also the most likely to waste a lot of your time if you tried to use it interactively.
+
 Conclusions
 ===========
 
 I don't know. Will it Mythos? Do regular folk have access to the tools needed to find these hard bugs? I'd say this benchmark answers with a resounding, "Maybe."
 
-Mythos probably really is better than the other current models at finding security bugs, as it found four bugs that no model in this experiment found. But, I'll keep testing. It's possible prompt or tooling or harness changes can enable better results from the current crop of publicly available models.
+Mythos maybe really is better than the other current models at finding security bugs, as it found four bugs that no model in this experiment found. But, I'll keep testing. It's possible prompt or tooling or harness changes can enable better results from the current crop of publicly available models.
 
 And, the fact that Opus was able to see and understand all of these bugs when given sufficient clues makes me think it probably is possible for the best current public models to find these bugs, given sufficient time, opportunity, and tools. This benchmark is using a pretty naive harness and prompt.

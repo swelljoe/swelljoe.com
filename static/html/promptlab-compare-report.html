@@ -1,0 +1,105 @@
+<!doctype html><meta charset=utf-8>
+<title>Nelson — Qwen 3.6 precision sweep (BF16/8/6/4-bit)</title>
+<style>
+body{font:15px/1.5 -apple-system,Segoe UI,Roboto,sans-serif;max-width:980px;
+margin:2rem auto;padding:0 1rem;color:#1a1a1a}
+h1{font-size:1.6rem;margin-bottom:.2rem}h2{margin-top:2.2rem;border-bottom:2px solid #eee;padding-bottom:.3rem}
+.sub{color:#666;margin-top:0}
+.callout{background:#fff8f0;border:1px solid #f0c890;border-left:5px solid #e08a2b;
+border-radius:6px;padding:1rem 1.2rem;margin:1.2rem 0}
+.callout b{color:#b5530a}
+.big{font-size:1.15rem;font-weight:600}
+table{border-collapse:collapse;width:100%;margin:.8rem 0;font-size:14px}
+th,td{border:1px solid #ddd;padding:.4rem .6rem;text-align:center}
+th{background:#f4f4f4}td.l,th.l{text-align:left}
+.hit{background:#dff5e1;color:#1c6b2c;font-weight:600}
+.miss{background:#fde8e8;color:#9b1c1c}
+.part{background:#fff6da;color:#8a6d00}
+.nd{background:#f2f2f2;color:#999}
+.hardrow td.l{font-weight:600}
+.tag{display:inline-block;font-size:11px;padding:1px 6px;border-radius:9px;background:#eee;color:#555;margin-left:.4rem}
+.tag.hard{background:#fde8e8;color:#9b1c1c}
+small{color:#777}
+code{background:#f4f4f4;padding:1px 4px;border-radius:3px;font-size:13px}
+
+th.armgrp{border-bottom:1px solid #ddd}
+.quant{font-size:11px;color:#777;font-weight:400}
+td.qsep,th.qsep{border-left:2px solid #cfcfcf}
+td.diff{outline:2px solid #e08a2b;outline-offset:-2px;position:relative}
+td.diff::after{content:'\0394';position:absolute;top:0;right:2px;font-size:9px;
+color:#b5530a;font-weight:700}
+.legend{font-size:13px;color:#555;margin:.4rem 0 1.2rem}
+.same{color:#1c6b2c;font-weight:600}
+.warn{color:#b5530a;font-weight:600}
+td.up{color:#9b1c1c;font-weight:600}
+td.down{color:#1c6b2c;font-weight:600}
+</style>
+<h1>Qwen 3.6 precision sweep: full-precision BF16 vs 8-bit vs 6-bit vs 4-bit</h1>
+<p class=sub>How far can the self-hosted Qwen 3.6 models be quantized before
+vulnerability detection — or the tokens spent reaching it — degrades? The same
+open-prompt probe across four precision tiers (full-precision <b>BF16</b> /
+<b>UD-Q8_K_XL</b> / <b>UD-Q6_K_XL</b> / <b>UD-Q4_K_XL</b>): three non-leaking arms
+(<b>open</b> / <b>plan-first</b> / <b>CWE-checklist</b>) &times; two models, 2
+trials/arm at temperature 0.5, over six single-file cases spanning an 18&rarr;0
+baseline and five languages. Detection = a finding localized within 10 lines of
+the planted ground-truth hunk.</p>
+
+<div class=callout>
+<div class=big>Hard-miss detection by quant: <b>BF16</b> 0/6 &middot; <b>Q8</b> 0/6 &middot; <b>Q6</b> 0/6 &middot; <b>Q4</b> 0/6</div>
+The capability ceiling is the headline — if every tier posts the same hard-case
+count, the bottleneck is model capability, not precision. The <b>token-usage</b>
+section below answers the second question: does a smaller quant spend <i>more</i>
+tokens to reach the same answer (a false economy for anyone who can run either)?
+Deltas there are measured against <b>BF16</b>.
+</div>
+
+<h2>Detection matrix &mdash; BF16, Q8, Q6, Q4 side by side</h2>
+<p class=legend>Cell = localized hits / completed trials, one column per quant.
+<span class=hit>green</span> = both trials hit, <span class=part>amber</span> =
+split, <span class=miss>red</span> = neither, <span class=nd>&mdash;</span> = no
+data. A <b>Δ</b> marks an arm where the quants <i>disagree</i> on whether the bug
+was found. Hard-miss cases (baseline ≤1) bold.</p>
+<h3>Qwen 3.6 27B (dense)</h3><table><tr><th class=l rowspan=2>case</th><th rowspan=2>baseline</th><th class='armgrp qsep' colspan=4>open</th><th class='armgrp qsep' colspan=4>plan</th><th class='armgrp qsep' colspan=4>checklist</th></tr><tr><th class='quant qsep'>BF16</th><th class='quant'>Q8</th><th class='quant'>Q6</th><th class='quant'>Q4</th><th class='quant qsep'>BF16</th><th class='quant'>Q8</th><th class='quant'>Q6</th><th class='quant'>Q4</th><th class='quant qsep'>BF16</th><th class='quant'>Q8</th><th class='quant'>Q6</th><th class='quant'>Q4</th></tr><tr><td class=l>GHSA-w52v-v783-gw97<br><small>CWE-89 &middot; JS</small><span class='tag'>hit anchor</span></td><td>18/20</td><td class='hit qsep'>2/2</td><td class='hit'>2/2</td><td class='hit'>2/2</td><td class='hit'>2/2</td><td class='hit qsep'>2/2</td><td class='hit'>2/2</td><td class='hit'>2/2</td><td class='hit'>2/2</td><td class='hit qsep'>2/2</td><td class='hit'>2/2</td><td class='hit'>2/2</td><td class='hit'>2/2</td></tr><tr><td class=l>GHSA-j273-m5qq-6825<br><small>CWE-22 &middot; Java</small><span class='tag'>guard</span></td><td>17/20</td><td class='hit qsep'>2/2</td><td class='hit'>2/2</td><td class='part'>1/2</td><td class='part'>1/2</td><td class='miss qsep diff'>0/2</td><td class='hit diff'>2/2</td><td class='hit diff'>2/2</td><td class='part diff'>1/2</td><td class='hit qsep'>2/2</td><td class='part'>1/2</td><td class='hit'>2/2</td><td class='part'>1/2</td></tr><tr><td class=l>GHSA-f26g-jm89-4g65<br><small>CWE-77 &middot; Rust</small><span class='tag'>medium</span></td><td>11/20</td><td class='part qsep'>1/2</td><td class='part'>1/2</td><td class='hit'>2/2</td><td class='hit'>2/2</td><td class='miss qsep diff'>0/2</td><td class='part diff'>1/2</td><td class='miss diff'>0/2</td><td class='part diff'>1/2</td><td class='part qsep diff'>1/2</td><td class='part diff'>1/2</td><td class='miss diff'>0/2</td><td class='part diff'>1/2</td></tr><tr class=hardrow><td class=l>GHSA-x9h5-r9v2-vcww<br><small>CWE-122 &middot; C</small><span class='tag hard'>hard miss</span></td><td>1/21</td><td class='miss qsep'>0/2</td><td class='miss'>0/2</td><td class='miss'>0/2</td><td class='miss'>0/2</td><td class='miss qsep'>0/2</td><td class='miss'>0/2</td><td class='miss'>0/2</td><td class='miss'>0/2</td><td class='miss qsep'>0/2</td><td class='miss'>0/2</td><td class='miss'>0/2</td><td class='miss'>0/2</td></tr><tr class=hardrow><td class=l>GHSA-9f49-8x56-jmjc<br><small>CWE-416 &middot; C</small><span class='tag hard'>hard miss</span></td><td>1/21</td><td class='miss qsep'>0/2</td><td class='miss'>0/2</td><td class='miss'>0/2</td><td class='miss'>0/2</td><td class='miss qsep'>0/2</td><td class='miss'>0/2</td><td class='miss'>0/2</td><td class='miss'>0/2</td><td class='miss qsep'>0/2</td><td class='miss'>0/2</td><td class='miss'>0/2</td><td class='miss'>0/2</td></tr><tr class=hardrow><td class=l>CVE-2026-5199<br><small>CWE-639 &middot; Go</small><span class='tag hard'>hardest miss</span></td><td>0/21</td><td class='miss qsep'>0/2</td><td class='miss'>0/2</td><td class='miss'>0/2</td><td class='miss'>0/2</td><td class='miss qsep'>0/2</td><td class='miss'>0/2</td><td class='miss'>0/2</td><td class='miss'>0/2</td><td class='miss qsep'>0/2</td><td class='miss'>0/2</td><td class='miss'>0/2</td><td class='miss'>0/2</td></tr></table><h3>Qwen 3.6 35B-A3B (MoE)</h3><table><tr><th class=l rowspan=2>case</th><th rowspan=2>baseline</th><th class='armgrp qsep' colspan=4>open</th><th class='armgrp qsep' colspan=4>plan</th><th class='armgrp qsep' colspan=4>checklist</th></tr><tr><th class='quant qsep'>BF16</th><th class='quant'>Q8</th><th class='quant'>Q6</th><th class='quant'>Q4</th><th class='quant qsep'>BF16</th><th class='quant'>Q8</th><th class='quant'>Q6</th><th class='quant'>Q4</th><th class='quant qsep'>BF16</th><th class='quant'>Q8</th><th class='quant'>Q6</th><th class='quant'>Q4</th></tr><tr><td class=l>GHSA-w52v-v783-gw97<br><small>CWE-89 &middot; JS</small><span class='tag'>hit anchor</span></td><td>18/20</td><td class='hit qsep'>2/2</td><td class='hit'>2/2</td><td class='hit'>2/2</td><td class='hit'>2/2</td><td class='hit qsep'>2/2</td><td class='hit'>2/2</td><td class='hit'>2/2</td><td class='hit'>2/2</td><td class='hit qsep'>2/2</td><td class='hit'>2/2</td><td class='hit'>2/2</td><td class='hit'>2/2</td></tr><tr><td class=l>GHSA-j273-m5qq-6825<br><small>CWE-22 &middot; Java</small><span class='tag'>guard</span></td><td>17/20</td><td class='part qsep'>1/2</td><td class='part'>1/2</td><td class='hit'>2/2</td><td class='hit'>2/2</td><td class='part qsep diff'>1/2</td><td class='hit diff'>2/2</td><td class='hit diff'>2/2</td><td class='miss diff'>0/2</td><td class='part qsep'>1/2</td><td class='hit'>2/2</td><td class='hit'>2/2</td><td class='part'>1/2</td></tr><tr><td class=l>GHSA-f26g-jm89-4g65<br><small>CWE-77 &middot; Rust</small><span class='tag'>medium</span></td><td>11/20</td><td class='miss qsep'>0/2</td><td class='miss'>0/2</td><td class='miss'>0/2</td><td class='miss'>0/2</td><td class='miss qsep'>0/2</td><td class='miss'>0/2</td><td class='miss'>0/2</td><td class='miss'>0/2</td><td class='part qsep diff'>1/2</td><td class='miss diff'>0/2</td><td class='miss diff'>0/2</td><td class='miss diff'>0/2</td></tr><tr class=hardrow><td class=l>GHSA-x9h5-r9v2-vcww<br><small>CWE-122 &middot; C</small><span class='tag hard'>hard miss</span></td><td>1/21</td><td class='miss qsep'>0/2</td><td class='miss'>0/2</td><td class='miss'>0/2</td><td class='miss'>0/2</td><td class='miss qsep'>0/2</td><td class='miss'>0/2</td><td class='miss'>0/2</td><td class='miss'>0/2</td><td class='miss qsep'>0/2</td><td class='miss'>0/2</td><td class='miss'>0/2</td><td class='miss'>0/2</td></tr><tr class=hardrow><td class=l>GHSA-9f49-8x56-jmjc<br><small>CWE-416 &middot; C</small><span class='tag hard'>hard miss</span></td><td>1/21</td><td class='miss qsep'>0/2</td><td class='miss'>0/2</td><td class='miss'>0/2</td><td class='miss'>0/2</td><td class='miss qsep'>0/2</td><td class='miss'>0/2</td><td class='miss'>0/2</td><td class='miss'>0/2</td><td class='miss qsep'>0/2</td><td class='miss'>0/2</td><td class='miss'>0/2</td><td class='miss'>0/2</td></tr><tr class=hardrow><td class=l>CVE-2026-5199<br><small>CWE-639 &middot; Go</small><span class='tag hard'>hardest miss</span></td><td>0/21</td><td class='miss qsep'>0/2</td><td class='miss'>0/2</td><td class='miss'>0/2</td><td class='miss'>0/2</td><td class='miss qsep'>0/2</td><td class='miss'>0/1</td><td class='miss'>0/2</td><td class='miss'>0/2</td><td class='miss qsep'>0/2</td><td class='miss'>0/2</td><td class='miss'>0/2</td><td class='miss'>0/2</td></tr></table>
+
+<h2>Token usage &mdash; cost to answer per quant</h2>
+<p>Mean per completed run. <b>Gen tokens</b> = what the model actually generates
+(the real compute-to-answer); <b>context tokens</b> = input re-read across the
+ReAct loop (proxy for tool-call turns); <b>wall-clock</b> = latency (also moved by
+host load). Percentages are vs <b>BF16</b>; <span class=warn>+</span> means the
+smaller quant works harder. A smaller quant that needs materially more gen tokens
+for the same detection is a false economy where both quants are runnable.</p>
+<table><tr><th class=l>model</th><th>quant</th><th>completed runs</th><th>gen tokens/run</th><th>context tokens/run</th><th>wall-clock/run</th></tr><tr><td class=l>Qwen 3.6 27B (dense)</td><td><b>BF16</b></td><td>36</td><td class=l style='text-align:center'>4671 <small>(+0.0%)</small></td><td class=l style='text-align:center'>369151 <small>(+0.0%)</small></td><td class=l style='text-align:center'>696s <small>(+0.0%)</small></td></tr><tr><td class=l>Qwen 3.6 27B (dense)</td><td><b>Q8</b></td><td>36</td><td class=up style='text-align:center'>5132 <small>(+9.9%)</small></td><td class=up style='text-align:center'>393977 <small>(+6.7%)</small></td><td class=down style='text-align:center'>373s <small>(-46.3%)</small></td></tr><tr><td class=l>Qwen 3.6 27B (dense)</td><td><b>Q6</b></td><td>36</td><td class=up style='text-align:center'>5267 <small>(+12.8%)</small></td><td class=down style='text-align:center'>360289 <small>(-2.4%)</small></td><td class=down style='text-align:center'>364s <small>(-47.6%)</small></td></tr><tr><td class=l>Qwen 3.6 27B (dense)</td><td><b>Q4</b></td><td>36</td><td class=up style='text-align:center'>6036 <small>(+29.2%)</small></td><td class=down style='text-align:center'>344132 <small>(-6.8%)</small></td><td class=down style='text-align:center'>336s <small>(-51.7%)</small></td></tr><tr><td class=l>Qwen 3.6 35B-A3B (MoE)</td><td><b>BF16</b></td><td>36</td><td class=l style='text-align:center'>8544 <small>(+0.0%)</small></td><td class=l style='text-align:center'>272504 <small>(+0.0%)</small></td><td class=l style='text-align:center'>448s <small>(+0.0%)</small></td></tr><tr><td class=l>Qwen 3.6 35B-A3B (MoE)</td><td><b>Q8</b></td><td>35</td><td class=down style='text-align:center'>7655 <small>(-10.4%)</small></td><td class=down style='text-align:center'>250490 <small>(-8.1%)</small></td><td class=down style='text-align:center'>246s <small>(-45.0%)</small></td></tr><tr><td class=l>Qwen 3.6 35B-A3B (MoE)</td><td><b>Q6</b></td><td>36</td><td class=down style='text-align:center'>7333 <small>(-14.2%)</small></td><td class=up style='text-align:center'>279185 <small>(+2.5%)</small></td><td class=down style='text-align:center'>250s <small>(-44.2%)</small></td></tr><tr><td class=l>Qwen 3.6 35B-A3B (MoE)</td><td><b>Q4</b></td><td>36</td><td class=down style='text-align:center'>8449 <small>(-1.1%)</small></td><td class=down style='text-align:center'>264276 <small>(-3.0%)</small></td><td class=down style='text-align:center'>253s <small>(-43.5%)</small></td></tr></table>
+
+<h2>Arm summary (union over 2 trials)</h2>
+<p>How many solved/medium cases and hard-miss cases each (model, quant, arm)
+detected in at least one trial. Denominators count only cases with a completed
+run.</p>
+<table><tr><th class=l>model</th><th>quant</th><th class=l>arm</th><th>solved-cases</th><th>hard-miss-cases</th></tr><tr><td class=l>Qwen 3.6 27B (dense)</td><td class='qsep'><b>BF16</b></td><td class=l>open</td><td class=hit>3/3</td><td class=miss>0/3</td></tr><tr><td class=l>Qwen 3.6 27B (dense)</td><td class=''><b>BF16</b></td><td class=l>plan</td><td class=part>1/3</td><td class=miss>0/3</td></tr><tr><td class=l>Qwen 3.6 27B (dense)</td><td class=''><b>BF16</b></td><td class=l>checklist</td><td class=hit>3/3</td><td class=miss>0/3</td></tr><tr><td class=l>Qwen 3.6 27B (dense)</td><td class='qsep'><b>Q8</b></td><td class=l>open</td><td class=hit>3/3</td><td class=miss>0/3</td></tr><tr><td class=l>Qwen 3.6 27B (dense)</td><td class=''><b>Q8</b></td><td class=l>plan</td><td class=hit>3/3</td><td class=miss>0/3</td></tr><tr><td class=l>Qwen 3.6 27B (dense)</td><td class=''><b>Q8</b></td><td class=l>checklist</td><td class=hit>3/3</td><td class=miss>0/3</td></tr><tr><td class=l>Qwen 3.6 27B (dense)</td><td class='qsep'><b>Q6</b></td><td class=l>open</td><td class=hit>3/3</td><td class=miss>0/3</td></tr><tr><td class=l>Qwen 3.6 27B (dense)</td><td class=''><b>Q6</b></td><td class=l>plan</td><td class=part>2/3</td><td class=miss>0/3</td></tr><tr><td class=l>Qwen 3.6 27B (dense)</td><td class=''><b>Q6</b></td><td class=l>checklist</td><td class=part>2/3</td><td class=miss>0/3</td></tr><tr><td class=l>Qwen 3.6 27B (dense)</td><td class='qsep'><b>Q4</b></td><td class=l>open</td><td class=hit>3/3</td><td class=miss>0/3</td></tr><tr><td class=l>Qwen 3.6 27B (dense)</td><td class=''><b>Q4</b></td><td class=l>plan</td><td class=hit>3/3</td><td class=miss>0/3</td></tr><tr><td class=l>Qwen 3.6 27B (dense)</td><td class=''><b>Q4</b></td><td class=l>checklist</td><td class=hit>3/3</td><td class=miss>0/3</td></tr><tr><td class=l>Qwen 3.6 35B-A3B (MoE)</td><td class='qsep'><b>BF16</b></td><td class=l>open</td><td class=part>2/3</td><td class=miss>0/3</td></tr><tr><td class=l>Qwen 3.6 35B-A3B (MoE)</td><td class=''><b>BF16</b></td><td class=l>plan</td><td class=part>2/3</td><td class=miss>0/3</td></tr><tr><td class=l>Qwen 3.6 35B-A3B (MoE)</td><td class=''><b>BF16</b></td><td class=l>checklist</td><td class=hit>3/3</td><td class=miss>0/3</td></tr><tr><td class=l>Qwen 3.6 35B-A3B (MoE)</td><td class='qsep'><b>Q8</b></td><td class=l>open</td><td class=part>2/3</td><td class=miss>0/3</td></tr><tr><td class=l>Qwen 3.6 35B-A3B (MoE)</td><td class=''><b>Q8</b></td><td class=l>plan</td><td class=part>2/3</td><td class=miss>0/3</td></tr><tr><td class=l>Qwen 3.6 35B-A3B (MoE)</td><td class=''><b>Q8</b></td><td class=l>checklist</td><td class=part>2/3</td><td class=miss>0/3</td></tr><tr><td class=l>Qwen 3.6 35B-A3B (MoE)</td><td class='qsep'><b>Q6</b></td><td class=l>open</td><td class=part>2/3</td><td class=miss>0/3</td></tr><tr><td class=l>Qwen 3.6 35B-A3B (MoE)</td><td class=''><b>Q6</b></td><td class=l>plan</td><td class=part>2/3</td><td class=miss>0/3</td></tr><tr><td class=l>Qwen 3.6 35B-A3B (MoE)</td><td class=''><b>Q6</b></td><td class=l>checklist</td><td class=part>2/3</td><td class=miss>0/3</td></tr><tr><td class=l>Qwen 3.6 35B-A3B (MoE)</td><td class='qsep'><b>Q4</b></td><td class=l>open</td><td class=part>2/3</td><td class=miss>0/3</td></tr><tr><td class=l>Qwen 3.6 35B-A3B (MoE)</td><td class=''><b>Q4</b></td><td class=l>plan</td><td class=part>1/3</td><td class=miss>0/3</td></tr><tr><td class=l>Qwen 3.6 35B-A3B (MoE)</td><td class=''><b>Q4</b></td><td class=l>checklist</td><td class=part>2/3</td><td class=miss>0/3</td></tr></table>
+
+<h2>False-positive angle: off-target finding volume on the hard cases</h2>
+<p>Every finding on the three hard cases is off-target (none localized to the
+planted bug). Per-run finding volume across the quants — does the smaller quant
+spike hallucinated noise?</p>
+<table><tr><th class=l>model</th><th class=l>arm</th><th colspan=4>off-target findings / run</th></tr><tr><th class=l></th><th class=l></th><th>BF16</th><th>Q8</th><th>Q6</th><th>Q4</th></tr><tr><td class=l>Qwen 3.6 27B (dense)</td><td class=l>open</td><td>1.00 <small>(6/6)</small></td><td>1.17 <small>(7/6)</small></td><td>0.83 <small>(5/6)</small></td><td>0.67 <small>(4/6)</small></td></tr><tr><td class=l>Qwen 3.6 27B (dense)</td><td class=l>plan</td><td>1.17 <small>(7/6)</small></td><td>0.33 <small>(2/6)</small></td><td>1.33 <small>(8/6)</small></td><td>0.17 <small>(1/6)</small></td></tr><tr><td class=l>Qwen 3.6 27B (dense)</td><td class=l>checklist</td><td>0.67 <small>(4/6)</small></td><td>0.33 <small>(2/6)</small></td><td>0.67 <small>(4/6)</small></td><td>0.50 <small>(3/6)</small></td></tr><tr><td class=l>Qwen 3.6 35B-A3B (MoE)</td><td class=l>open</td><td>0.50 <small>(3/6)</small></td><td>0.83 <small>(5/6)</small></td><td>0.67 <small>(4/6)</small></td><td>0.50 <small>(3/6)</small></td></tr><tr><td class=l>Qwen 3.6 35B-A3B (MoE)</td><td class=l>plan</td><td>0.83 <small>(5/6)</small></td><td>1.20 <small>(6/5)</small></td><td>0.67 <small>(4/6)</small></td><td>0.50 <small>(3/6)</small></td></tr><tr><td class=l>Qwen 3.6 35B-A3B (MoE)</td><td class=l>checklist</td><td>0.67 <small>(4/6)</small></td><td>0.50 <small>(3/6)</small></td><td>0.33 <small>(2/6)</small></td><td>0.50 <small>(3/6)</small></td></tr></table>
+
+<h2>Method &amp; caveats</h2>
+<ul>
+<li>Models: <code>qwen3.6-27b</code> (dense, 10.20.30.1) and
+<code>qwen3.6-35b-A3b</code> (MoE, 10.20.30.2), self-hosted llama-server, free.
+Identical endpoints &mdash; only the loaded precision differs (BF16 / UD-Q8/Q6/Q4_K_XL).</li>
+<li>Per tier: 6 cases &times; 3 arms &times; 2 trials
+&times; 2 models = 72 cells. Completed runs found: BF16 36, Q8 36, Q6 36, Q4 36.</li>
+<li>Temperature 0.5 so repeats explore; llama-server's default <code>seed=-1</code>
+randomizes per request. Detection is localization-only (free); on the hard cases
+zero findings landed near the planted bug, so there is nothing for a truth-judge
+to confirm.</li>
+<li>Token counts are llama-server's reported usage. Context tokens are large
+because the ReAct loop re-sends the transcript each turn (cache-blind accounting);
+the cross-quant <i>comparison</i> is still apples-to-apples since the harness is
+identical.</li>
+<li>Separate DBs per quant (<code>nelson-promptlab-bf16.db</code>, <code>nelson-promptlab.db</code>, <code>nelson-promptlab-6bit.db</code>, <code>nelson-promptlab-4bit.db</code>);
+the baseline benchmark DB is untouched.</li>
+</ul>
+<p><small>Generated from nelson-promptlab-bf16.db, nelson-promptlab.db, nelson-promptlab-6bit.db, nelson-promptlab-4bit.db ·
+4 quants &times; 2 models &times; 6 cases
+&times; 3 arms &times; 2 trials.</small></p>
