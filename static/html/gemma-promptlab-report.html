@@ -1,0 +1,68 @@
+<!doctype html><meta charset=utf-8>
+<title>Nelson — Gemma 4 QAT prompt-lab (9-case)</title><style>
+body{font:15px/1.5 -apple-system,Segoe UI,Roboto,sans-serif;max-width:1000px;
+margin:2rem auto;padding:0 1rem;color:#1a1a1a}
+h1{font-size:1.6rem;margin-bottom:.2rem}h2{margin-top:2.2rem;border-bottom:2px solid #eee;padding-bottom:.3rem}
+.sub{color:#666;margin-top:0}
+.callout{background:#fff8f0;border:1px solid #f0c890;border-left:5px solid #e08a2b;
+border-radius:6px;padding:1rem 1.2rem;margin:1.2rem 0}
+.callout b{color:#b5530a}
+.big{font-size:1.15rem;font-weight:600}
+table{border-collapse:collapse;width:100%;margin:.8rem 0;font-size:14px}
+th,td{border:1px solid #ddd;padding:.4rem .6rem;text-align:center}
+th{background:#f4f4f4}td.l,th.l{text-align:left}
+.hit{background:#dff5e1;color:#1c6b2c;font-weight:600}
+.miss{background:#fde8e8;color:#9b1c1c}
+.part{background:#fff6da;color:#8a6d00}
+.nd{background:#f2f2f2;color:#999}
+.hardrow td.l{font-weight:600}
+.tag{display:inline-block;font-size:11px;padding:1px 6px;border-radius:9px;background:#eee;color:#555;margin-left:.4rem}
+.tag.hard{background:#fde8e8;color:#9b1c1c}
+small{color:#777}
+code{background:#f4f4f4;padding:1px 4px;border-radius:3px;font-size:13px}
+</style>
+<h1>Gemma 4 (QAT-4bit) prompt-lab — full 9-case corpus</h1>
+<p class=sub>The two new Quantization-Aware-Training 4-bit Gemma 4 models
+(<code>gemma4-31b-qat</code> dense, <code>gemma4-26b-a4b-qat</code> MoE), self-hosted
+and free, over all 9 corpus cases. Three non-leaking prompting arms
+(<b>open</b> / <b>plan-first</b> / <b>CWE-checklist</b>) &times; 2 trials/arm
+at temperature 0.5. Multi-file cases (nomad/craft/ghost) audit every baseline file;
+a case is detected if ANY file localizes within 10 lines of the planted
+hunk (the benchmark's gate). Motivation: at 8-bit the 26B-A4B MoE tied the
+field-leading 4/9 detection, so we feel out the QAT-4bit edges as we did Qwen 3.6.</p>
+
+<div class=callout>
+<div class=big>Headline</div>
+<b>gemma4-26b-a4b-qat</b>: best arm solves 3/5 solved-tier cases and cracks 1/4 hard-miss cases.<br><b>gemma4-31b-qat</b>: best arm solves 4/5 solved-tier cases and cracks 2/4 hard-miss cases.
+<br><small>(union = detected by at least one trial of that arm; localization-only,
+no truth-judge yet — confirm the hard-case hits with the judge before claiming them.)</small>
+</div>
+
+<h2>Detection matrix</h2>
+<p>Cell = case-detected trials / completed trials for that arm (a case counts if
+any of its files hit). <span class=hit>green</span> = every trial, <span class=part>
+amber</span> = some, <span class=miss>red</span> = none, <span class=nd>—</span> =
+no data. Hard-miss cases (baseline ≤1) bold.</p>
+<h3>gemma4-26b-a4b-qat</h3><table><tr><th class=l>case</th><th>baseline</th><th>open</th><th>plan</th><th>checklist</th></tr><tr><td class=l>GHSA-w52v-v783-gw97<br><small>CWE-89 · JS</small><span class='tag'>hit anchor</span></td><td>17/20</td><td class=miss>0/1</td><td class=part>1/2</td><td class=part>1/2</td></tr><tr><td class=l>GHSA-j273-m5qq-6825<br><small>CWE-22 · Java</small><span class='tag'>guard</span></td><td>12/20</td><td class=part>1/2</td><td class=hit>2/2</td><td class=hit>1/1</td></tr><tr><td class=l>GHSA-f26g-jm89-4g65<br><small>CWE-77 · Rust</small><span class='tag'>medium</span></td><td>11/19</td><td class=miss>0/2</td><td class=part>1/2</td><td class=miss>0/2</td></tr><tr><td class=l>CVE-2026-7474<br><small>CWE-22 · Go</small><span class='tag'>medium-hard</span></td><td>7/21</td><td class=miss>0/2</td><td class=miss>0/2</td><td class=miss>0/2</td></tr><tr><td class=l>GHSA-9f49-8x56-jmjc<br><small>CWE-416 · C</small><span class='tag'>hard</span></td><td>2/21</td><td class=miss>0/1</td><td class=miss>0/1</td><td class=miss>0/1</td></tr><tr class=hardrow><td class=l>GHSA-mpxh-8fq3-x8mh<br><small>CWE-787 · C</small><span class='tag hard'>hard</span></td><td>1/17</td><td class=miss>0/2</td><td class=miss>0/1</td><td class=miss>0/1</td></tr><tr class=hardrow><td class=l>GHSA-x9h5-r9v2-vcww<br><small>CWE-122 · C</small><span class='tag hard'>hard</span></td><td>1/20</td><td class=miss>0/1</td><td class=nd>—</td><td class=nd>—</td></tr><tr class=hardrow><td class=l>GHSA-cc7p-2j3x-x7xf<br><small>CWE-863 · PHP</small><span class='tag hard'>hardest</span></td><td>0/20</td><td class=miss>0/2</td><td class=part>1/2</td><td class=miss>0/2</td></tr><tr class=hardrow><td class=l>CVE-2026-5199<br><small>CWE-639 · Go</small><span class='tag hard'>hardest</span></td><td>0/20</td><td class=hit>2/2</td><td class=miss>0/2</td><td class=miss>0/2</td></tr></table><h3>gemma4-31b-qat</h3><table><tr><th class=l>case</th><th>baseline</th><th>open</th><th>plan</th><th>checklist</th></tr><tr><td class=l>GHSA-w52v-v783-gw97<br><small>CWE-89 · JS</small><span class='tag'>hit anchor</span></td><td>17/20</td><td class=hit>2/2</td><td class=hit>2/2</td><td class=hit>2/2</td></tr><tr><td class=l>GHSA-j273-m5qq-6825<br><small>CWE-22 · Java</small><span class='tag'>guard</span></td><td>12/20</td><td class=hit>2/2</td><td class=hit>2/2</td><td class=hit>2/2</td></tr><tr><td class=l>GHSA-f26g-jm89-4g65<br><small>CWE-77 · Rust</small><span class='tag'>medium</span></td><td>11/19</td><td class=hit>2/2</td><td class=miss>0/2</td><td class=miss>0/2</td></tr><tr><td class=l>CVE-2026-7474<br><small>CWE-22 · Go</small><span class='tag'>medium-hard</span></td><td>7/21</td><td class=part>1/2</td><td class=miss>0/2</td><td class=part>1/2</td></tr><tr><td class=l>GHSA-9f49-8x56-jmjc<br><small>CWE-416 · C</small><span class='tag'>hard</span></td><td>2/21</td><td class=miss>0/2</td><td class=miss>0/2</td><td class=miss>0/2</td></tr><tr class=hardrow><td class=l>GHSA-mpxh-8fq3-x8mh<br><small>CWE-787 · C</small><span class='tag hard'>hard</span></td><td>1/17</td><td class=miss>0/2</td><td class=miss>0/2</td><td class=miss>0/2</td></tr><tr class=hardrow><td class=l>GHSA-x9h5-r9v2-vcww<br><small>CWE-122 · C</small><span class='tag hard'>hard</span></td><td>1/20</td><td class=miss>0/2</td><td class=miss>0/2</td><td class=miss>0/1</td></tr><tr class=hardrow><td class=l>GHSA-cc7p-2j3x-x7xf<br><small>CWE-863 · PHP</small><span class='tag hard'>hardest</span></td><td>0/20</td><td class=hit>2/2</td><td class=miss>0/2</td><td class=miss>0/2</td></tr><tr class=hardrow><td class=l>CVE-2026-5199<br><small>CWE-639 · Go</small><span class='tag hard'>hardest</span></td><td>0/20</td><td class=part>1/2</td><td class=part>1/2</td><td class=miss>0/2</td></tr></table>
+
+<h2>Arm summary (union over 2 trials)</h2>
+<p>Cases each arm detected in at least one trial, split by whether the baseline
+solved the case (regression guard) or missed it (the real question). Denominators
+count only cases with a completed run.</p>
+<table><tr><th class=l>model</th><th class=l>arm</th><th>solved-cases</th><th>hard-miss-cases</th></tr><tr><td class=l>gemma4-26b-a4b-qat</td><td class=l>open</td><td class=part>1/5</td><td class=hit>1/4</td></tr><tr><td class=l>gemma4-26b-a4b-qat</td><td class=l>plan</td><td class=part>3/5</td><td class=hit>1/3</td></tr><tr><td class=l>gemma4-26b-a4b-qat</td><td class=l>checklist</td><td class=part>2/5</td><td class=miss>0/3</td></tr><tr><td class=l>gemma4-31b-qat</td><td class=l>open</td><td class=part>4/5</td><td class=hit>2/4</td></tr><tr><td class=l>gemma4-31b-qat</td><td class=l>plan</td><td class=part>2/5</td><td class=hit>1/4</td></tr><tr><td class=l>gemma4-31b-qat</td><td class=l>checklist</td><td class=part>3/5</td><td class=miss>0/4</td></tr></table>
+
+<h2>Method &amp; caveats</h2>
+<ul>
+<li>Models: <code>gemma4-31b-qat</code> (dense, 10.20.30.1) and
+<code>gemma4-26b-a4b-qat</code> (MoE, 10.20.30.2), self-hosted llama-server, free,
+QAT-4bit weights.</li>
+<li>15 target files over 9 cases (nomad 2, craft 5, ghost 2, rest 1); a case is a
+hit if any file localizes. 90 runs/model = 15 files × 3 arms × 2 trials.</li>
+<li>Temperature 0.5 so repeats explore different reasoning paths; llama-server
+<code>seed=-1</code> randomizes per request. A timeout/infra_error reads as
+no-data, never a miss.</li>
+<li>Detection is localization-only (free). Hard-case hits still need the truth
+judge to confirm SAME-bug; this report is the cheap first pass.</li>
+</ul>
+<p><small>Generated from nelson-gemma-promptlab.db · 2 models ·
+9 cases × 3 arms × 2 trials.</small></p>

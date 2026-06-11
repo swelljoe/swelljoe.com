@@ -1,0 +1,276 @@
+<!doctype html><html><head><meta charset=utf-8>
+<title>Shadow vs Opus — disagreement adjudication</title>
+<style>
+:root { --bg:#15171c; --fg:#e8e8ea; --muted:#9aa0aa; --line:#2c2f36;
+        --same:#4ea36a; --diff:#c0564b; --accent:#6ea8d8; --code:#0f1115; }
+body { background:var(--bg); color:var(--fg); font:14px/1.55 -apple-system,
+        Segoe UI, Roboto, sans-serif; margin:0; padding:28px 36px; max-width:1100px; }
+h1 { font-size:21px; margin:0 0 4px; }
+h2 { font-size:15px; margin:0 0 8px; color:var(--accent); }
+.intro { color:var(--muted); margin:0 0 20px; }
+section { border:1px solid var(--line); border-radius:10px; padding:16px 18px;
+          margin:0 0 22px; background:#181b21; }
+.badge { font-size:11px; background:#23272f; border:1px solid var(--line);
+         border-radius:5px; padding:2px 7px; font-weight:600; color:var(--fg); }
+.adv { background:#1d2128; border-left:3px solid var(--accent); padding:8px 12px;
+       border-radius:4px; margin:6px 0 10px; }
+pre.code { background:var(--code); border:1px solid var(--line); border-radius:6px;
+           padding:10px 12px; overflow-x:auto; font:12px/1.45 ui-monospace,
+           SFMono-Regular,Menlo,monospace; color:#cdd3dc; }
+.variant { border-top:1px dashed var(--line); padding-top:10px; margin-top:10px; }
+.rep { margin:0 0 8px; }
+.tag { font-size:10px; text-transform:uppercase; letter-spacing:.05em;
+       background:#2a2f38; padding:2px 6px; border-radius:4px; color:var(--muted); }
+table.judges { border-collapse:collapse; width:100%; }
+table.judges td { vertical-align:top; padding:4px 8px; border-bottom:1px solid var(--line); }
+.mono { font-family:ui-monospace,Menlo,monospace; font-size:12px; white-space:nowrap; }
+.v { font-weight:700; font-size:12px; white-space:nowrap; }
+.vsame { color:var(--same); } .vdiff { color:var(--diff); }
+.muted { color:var(--muted); }
+</style></head><body>
+<h1>Shadow judges vs Opus — disagreement adjudication</h1>
+<p class="intro">6 distinct (case, file, line) spots where DeepSeek, MiMo and
+the local Gemma-4-31B <b>all three agreed with each other but contradicted Opus</b>.
+For each: the advisory ground truth, the pre-patch source around the flagged line
+(<span class='mono'>&gt;&gt;</span> marks it), and — per reporting variant — what the
+model said it found, then every judge's verdict and reasoning. Your call: is Opus right,
+or is the cheap panel?</p>
+<section><h2>GHSA-cc7p-2j3x-x7xf — <span class='mono'>src/services/Tokens.php:136</span> <span class='badge'>Opus: different_bug &nbsp;·&nbsp; all 3 shadows: same_bug</span> <span class='muted'>(1 reporting variant)</span></h2><div class='adv'><b>GHSA-cc7p-2j3x-x7xf</b> &nbsp; CVE-2026-32267 &nbsp; CWE: CWE-863 &nbsp; class: privilege-escalation<br><span class='muted'>Privilege Escalation/Bypass through UsersController-&gt;actionImpersonateWithToken()</span></div><pre class='code'>    114 
+    115     /**
+    116      * Searches for a token, and possibly returns a route for the request.
+    117      *
+    118      * @param string $token
+    119      * @return array|false
+    120      */
+    121     public function getTokenRoute(string $token): array|false
+    122     {
+    123         // Take the opportunity to delete any expired tokens
+    124         $this-&gt;deleteExpiredTokens();
+    125 
+    126         $mutex = Craft::$app-&gt;getMutex();
+    127         $lockKey = &quot;token:$token&quot;;
+    128         if (!$mutex-&gt;acquire($lockKey, 5)) {
+    129             return false;
+    130         }
+    131 
+    132         try {
+    133             $result = (new Query())
+    134                 -&gt;select([&#x27;id&#x27;, &#x27;route&#x27;, &#x27;usageLimit&#x27;, &#x27;usageCount&#x27;])
+    135                 -&gt;from([Table::TOKENS])
+&gt;&gt;  136                 -&gt;where([&#x27;token&#x27; =&gt; $token])
+    137                 -&gt;one();
+    138 
+    139             if (!$result) {
+    140                 // Remove it from the request  so it doesn’t get added to generated URLs
+    141                 Craft::$app-&gt;getRequest()-&gt;setToken(null);
+    142                 return false;
+    143             }
+    144 
+    145             // Usage limit enforcement (for future requests)
+    146             if ($result[&#x27;usageLimit&#x27;]) {
+    147                 // Does it have any more life after this?
+    148                 if ($result[&#x27;usageCount&#x27;] &lt; $result[&#x27;usageLimit&#x27;] - 1) {
+    149                     // Increment its count
+    150                     $this-&gt;incrementTokenUsageCountById($result[&#x27;id&#x27;]);
+    151                 } else {
+    152                     // Just delete it
+    153                     $this-&gt;deleteTokenById($result[&#x27;id&#x27;]);
+    154 
+    155                     // Remove it from the request as well so it doesn’t get added to generated URLs
+    156                     Craft::$app-&gt;getRequest()-&gt;setToken(null);
+    157                 }
+    158             }</pre><div class='variant'><div class='rep'><span class='tag'>reported bug</span> <span class='muted'>[CWE-863, conf medium]</span><br>getTokenRoute() authorizes a token by querying only on the token string, without checking the expiryDate column. The only expired-token enforcement is deleteExpiredTokens() on line 124, which runs before the mutex lock and before the query. This creates a TOCTOU race: a token that expires between the cleanup pass and the SELECT will still be found in the database and its route returned. Additionally, deleteExpiredTokens() is guarded by the _deletedExpiredTokens flag (line 207), so in long-running processes (queue workers, console commands, Swoole) it runs only once per process lifetime — any tokens expiring after that first cleanup remain in the database and are permanently accepted by the query. The fix is to add an expiry check to the query itself (e.g. -&gt;andWhere([&#x27;&gt;&#x27;, &#x27;expiryDate&#x27;, Db::prepareDateForDb(new DateTime())]) ), making the authorization decision atomic with the expiry constraint.</div><table class='judges'><tr><td class='mono'>OPUS</td><td class='v vdiff'>different_bug</td><td>The advisory describes a privilege-escalation/authorization-bypass in UsersController-&gt;actionImpersonateWithToken(), whereas the model flagged a TOCTOU expired-token race in Tokens.php&#x27;s getTokenRoute() query. These are distinct root-cause bugs (impersonation authorization flaw vs. token-expiry enforcement race) in different components, sharing only the CWE-863 class.</td></tr><tr><td class='mono'>deepseek</td><td class='v vsame'>same_bug</td><td>The model&#x27;s finding describes a missing expiryDate check in getTokenRoute() that allows expired tokens to be used, which is the root-cause bypass enabling privilege escalation via UsersController-&gt;actionImpersonateWithToken() as described in the advisory. The proposed fix (adding an expiry condition to the query) directly addresses that vulnerability.</td></tr><tr><td class='mono'>mimo</td><td class='v vsame'>same_bug</td><td>The model&#x27;s finding identifies a token authorization bypass due to improper expiry checks (CWE-863), which could allow expired tokens to be used for unauthorized access, directly enabling the privilege escalation via impersonation described in the advisory.</td></tr><tr><td class='mono'>gemma31b</td><td class='v vsame'>same_bug</td><td>The model identified a failure to check token expiration in the underlying service (Tokens.php), which is the root cause of the privilege escalation/bypass in the UsersController-&gt;actionImpersonateWithToken() method mentioned in the advisory.</td></tr></table></div></section><section><h2>GHSA-cc7p-2j3x-x7xf — <span class='mono'>src/web/Controller.php:527</span> <span class='badge'>Opus: different_bug &nbsp;·&nbsp; all 3 shadows: same_bug</span> <span class='muted'>(1 reporting variant)</span></h2><div class='adv'><b>GHSA-cc7p-2j3x-x7xf</b> &nbsp; CVE-2026-32267 &nbsp; CWE: CWE-863 &nbsp; class: privilege-escalation<br><span class='muted'>Privilege Escalation/Bypass through UsersController-&gt;actionImpersonateWithToken()</span></div><pre class='code'>    505             throw new BadRequestHttpException(&#x27;Post request required&#x27;);
+    506         }
+    507     }
+    508 
+    509     /**
+    510      * Throws a 400 error if the request doesn&#x27;t accept JSON.
+    511      *
+    512      * @throws BadRequestHttpException if the request doesn&#x27;t accept JSON
+    513      */
+    514     public function requireAcceptsJson(): void
+    515     {
+    516         if (!$this-&gt;request-&gt;getAcceptsJson() &amp;&amp; !$this-&gt;request-&gt;getIsOptions()) {
+    517             throw new BadRequestHttpException(&#x27;Request must accept JSON in response&#x27;);
+    518         }
+    519     }
+    520 
+    521     /**
+    522      * Throws a 400 error if the current request doesn’t have a valid Craft token.
+    523      *
+    524      * @throws BadRequestHttpException if the request does not have a valid Craft token
+    525      * @see Request::getToken()
+    526      */
+&gt;&gt;  527     public function requireToken(): void
+    528     {
+    529         if (!$this-&gt;request-&gt;getHadToken()) {
+    530             throw new BadRequestHttpException(&#x27;Valid token required&#x27;);
+    531         }
+    532     }
+    533 
+    534     /**
+    535      * Throws a 400 error if the current request isn’t a control panel request.
+    536      *
+    537      * @throws BadRequestHttpException if this is not a control panel request
+    538      * @since 3.1.0
+    539      */
+    540     public function requireCpRequest(): void
+    541     {
+    542         if (!$this-&gt;request-&gt;getIsCpRequest()) {
+    543             throw new BadRequestHttpException(&#x27;Request must be a control panel request&#x27;);
+    544         }
+    545     }
+    546 
+    547     /**
+    548      * Throws a 400 error if the current request isn’t a site request.
+    549      *</pre><div class='variant'><div class='rep'><span class='tag'>reported bug</span> <span class='muted'>[CWE-287, conf high]</span><br>The `requireToken()` method is intended to ensure that a request contains a valid Craft token. However, it only calls `Request::getHadToken()`, which merely checks if a token was provided in the request and matches a basic alphanumeric regex. It does not perform any actual validation (e.g., checking against a database or verifying a cryptographic signature) to ensure the token is authentic or authorized. This allows an attacker to bypass token-based security checks by providing any arbitrary string that matches the format (e.g., `?token=abc`). This is critically exploitable in controllers like `LivePreviewController::actionPreview` and `UsersController::actionImpersonateWithToken`, where `requireToken()` is used as the primary security mechanism to protect sensitive operations such as user impersonation and arbitrary action execution as another user.</div><table class='judges'><tr><td class='mono'>OPUS</td><td class='v vdiff'>different_bug</td><td>The advisory describes a CWE-863 authorization/privilege-escalation flaw specific to actionImpersonateWithToken(), whereas the model flagged a generic CWE-287 weakness in the shared requireToken()/getHadToken() token-format check; it gestures at the impersonation controller only as an example and does not identify the specific authorization bug that the fix addressed.</td></tr><tr><td class='mono'>deepseek</td><td class='v vsame'>same_bug</td><td>The finding accurately pinpoints the insufficient token validation in `requireToken()` and explicitly mentions exploitation via `UsersController::actionImpersonateWithToken`, directly aligning with the advisory&#x27;s description of a privilege escalation bypass through that exact endpoint.</td></tr><tr><td class='mono'>mimo</td><td class='v vsame'>same_bug</td><td>The model correctly identifies that the flawed token validation in `requireToken()` is the root cause enabling the privilege escalation via `UsersController::actionImpersonateWithToken`, matching the advisory&#x27;s specific vulnerability.</td></tr><tr><td class='mono'>gemma31b</td><td class='v vsame'>same_bug</td><td>The model correctly identifies that the `requireToken()` method fails to validate the token, which directly enables the privilege escalation/bypass in `UsersController-&gt;actionImpersonateWithToken` described in the advisory.</td></tr></table></div></section><section><h2>GHSA-j273-m5qq-6825 — <span class='mono'>src/main/java/com/github/junrar/LocalFolderExtractor.java:62</span> <span class='badge'>Opus: same_bug &nbsp;·&nbsp; all 3 shadows: different_bug</span> <span class='muted'>(1 reporting variant)</span></h2><div class='adv'><b>GHSA-j273-m5qq-6825</b> &nbsp; CVE-2026-28208 &nbsp; CWE: CWE-22 &nbsp; class: path-traversal<br><span class='muted'>Arbitrary file write due to backslash path traversal</span></div><pre class='code'>     40             throw new IllegalStateException(e);
+     41         }
+     42 
+     43         return f;
+     44     }
+     45 
+     46     File extract(
+     47         final Archive arch,
+     48         final FileHeader fileHeader
+     49     ) throws RarException, IOException {
+     50         final File f = createFile(fileHeader, folderDestination);
+     51         try (OutputStream stream = new FileOutputStream(f)) {
+     52             arch.extractFile(fileHeader, stream);
+     53         }
+     54         return f;
+     55     }
+     56 
+     57     private File createFile(final FileHeader fh, final File destination) throws IOException {
+     58         String name = fh.getFileName();
+     59         File f = new File(destination, name);
+     60         String dirCanonPath = f.getCanonicalPath();
+     61         if (!dirCanonPath.startsWith(destination.getCanonicalPath())) {
+&gt;&gt;   62             String errorMessage = &quot;Rar contains file with invalid path: &#x27;&quot; + dirCanonPath + &quot;&#x27;&quot;;
+     63             throw new IllegalStateException(errorMessage);
+     64         }
+     65         if (!f.exists()) {
+     66             try {
+     67                 f = makeFile(destination, name);
+     68             } catch (final IOException e) {
+     69                 logger.error(&quot;error creating the new file: {}&quot;, f.getName(), e);
+     70             }
+     71         }
+     72         return f;
+     73     }
+     74 
+     75     private File makeFile(final File destination, final String name) throws IOException {
+     76         final String[] dirs = name.split(&quot;\\\\&quot;);
+     77         String path = &quot;&quot;;
+     78         final int size = dirs.length;
+     79         if (size == 1) {
+     80             return new File(destination, name);
+     81         } else if (size &gt; 1) {
+     82             for (int i = 0; i &lt; dirs.length - 1; i++) {
+     83                 path = path + File.separator + dirs[i];
+     84                 File dir = new File(destination, path);</pre><div class='variant'><div class='rep'><span class='tag'>reported bug</span> <span class='muted'>[CWE-22, conf high]</span><br>Path traversal vulnerability (Zip Slip). Same issue as line 35 - the startsWith check can be bypassed by a filename that resolves to a path sharing a prefix with the destination but outside it. For example, if destination is &#x27;/tmp/extract&#x27;, a malicious filename &#x27;../extract_evil/file.txt&#x27; resolves to &#x27;/tmp/extract_evil/file.txt&#x27;, which passes the check because &#x27;/tmp/extract_evil/file.txt&#x27;.startsWith(&#x27;/tmp/extract&#x27;) is true. This allows extraction of files outside the intended destination directory.</div><table class='judges'><tr><td class='mono'>OPUS</td><td class='v vsame'>same_bug</td><td>The model identified the path-traversal arbitrary-file-write flaw in the archive extractor&#x27;s inadequate destination-containment check (the bypassable startsWith validation) at the correct location, which is the same root-cause vulnerability the advisory describes. Although it illustrates a prefix-sibling bypass rather than the specific backslash vector, it correctly names the same defective check enabling file writes outside the destination, and the fix addresses the same weakness.</td></tr><tr><td class='mono'>deepseek</td><td class='v vdiff'>different_bug</td><td>The advisory describes a backslash path traversal (CWE-22), while the model&#x27;s finding is a different path traversal flaw: a startsWith check bypass via a sibling directory prefix (e.g., &#x27;../extract_evil/file.txt&#x27;), not involving backslash handling.</td></tr><tr><td class='mono'>mimo</td><td class='v vdiff'>different_bug</td><td>The advisory specifically mentions backslash path traversal as the vulnerability, while the model&#x27;s finding describes a path traversal using forward slashes, indicating a potential difference in the root cause or specificity of the flaw.</td></tr><tr><td class='mono'>gemma31b</td><td class='v vdiff'>different_bug</td><td>The advisory specifically identifies the root cause as &#x27;backslash path traversal&#x27;, whereas the model identifies a different path traversal mechanism involving a prefix bypass in a &#x27;startsWith&#x27; check.</td></tr></table></div></section><section><h2>GHSA-w52v-v783-gw97 — <span class='mono'>ghost/core/core/server/api/endpoints/utils/serializers/input/utils/slug-filter-order.js:9</span> <span class='badge'>Opus: different_bug &nbsp;·&nbsp; all 3 shadows: same_bug</span> <span class='muted'>(3 reporting variants)</span></h2><div class='adv'><b>GHSA-w52v-v783-gw97</b> &nbsp; CVE-2026-26980 &nbsp; CWE: CWE-89 &nbsp; class: sql-injection<br><span class='muted'>SQL injection in Content API</span></div><pre class='code'>      1 const slugFilterOrder = (table, filter) =&gt; {
+      2     let orderMatch = filter.match(/slug:\s?\[(.*)\]/);
+      3 
+      4     if (orderMatch) {
+      5         let orderSlugs = orderMatch[1].split(&#x27;,&#x27;);
+      6         let order = &#x27;CASE &#x27;;
+      7 
+      8         orderSlugs.forEach((slug, index) =&gt; {
+&gt;&gt;    9             order += `WHEN \`${table}\`.\`slug\` = &#x27;${slug}&#x27; THEN ${index} `;
+     10         });
+     11 
+     12         order += &#x27;END ASC&#x27;;
+     13 
+     14         return order;
+     15     }
+     16 };
+     17 
+     18 module.exports = slugFilterOrder;</pre><div class='variant'><div class='rep'><span class='tag'>reported bug</span> <span class='muted'>[CWE-89, conf high]</span><br>The &#x27;slug&#x27; variable is extracted from the &#x27;filter&#x27; parameter provided in the API request and is directly interpolated into a SQL CASE statement without any sanitization or escaping. This allows an attacker to perform a SQL injection by providing a specially crafted filter string (e.g., using single quotes to break out of the string literal), which can be used to exfiltrate data or cause delays via blind SQL injection in the ORDER BY clause.</div><table class='judges'><tr><td class='mono'>OPUS</td><td class='v vdiff'>different_bug</td><td>The advisory locates the critical SQL injection in the Content API, while the model flagged slug interpolation in slug-filter-order.js (an ORDER BY CASE construction). Without evidence that this specific slug-filter-order interpolation is the flaw the fix addressed, this reads as a different/adjacent finding rather than the named CVE-2026-26980 vulnerability.</td></tr><tr><td class='mono'>deepseek</td><td class='v vsame'>same_bug</td><td>The advisory describes a SQL injection vulnerability in the Content API, and the model&#x27;s finding is a SQL injection in a Content API endpoint utility (slug-filter-order.js) that directly interpolates an unsanitized &#x27;filter&#x27; parameter into a SQL CASE statement, matching the advisory&#x27;s bug class and scope.</td></tr><tr><td class='mono'>mimo</td><td class='v vsame'>same_bug</td><td>The model&#x27;s finding precisely identifies a SQL injection vulnerability in the slug-filter-order utility within the Content API endpoints, matching the advisory&#x27;s description of a critical SQL injection in Content API with the same root cause of unsanitized input interpolation.</td></tr><tr><td class='mono'>gemma31b</td><td class='v vsame'>same_bug</td><td>The model correctly identified a SQL injection vulnerability (CWE-89) within the API, which aligns with the description provided in the advisory.</td></tr></table></div><div class='variant'><div class='rep'><span class='tag'>reported bug</span> <span class='muted'>[CWE-89, conf high]</span><br>The &#x27;slug&#x27; variable is derived from the user-controlled &#x27;filter&#x27; parameter and is interpolated directly into a SQL string without sanitization or parameterization. This allows an attacker to break out of the single quotes and inject arbitrary SQL into the ORDER BY clause of the resulting database query.</div><table class='judges'><tr><td class='mono'>OPUS</td><td class='v vdiff'>different_bug</td><td>The advisory describes a critical SQL injection in the Content API (CVE-2026-26980), but the model flagged a slug-filter ORDER BY construction in a serializer util — without evidence this is the specific injection point the fix addressed, this reads as a different/adjacent CWE-89 finding rather than the named vulnerability.</td></tr><tr><td class='mono'>deepseek</td><td class='v vsame'>same_bug</td><td>The model identified a SQL injection in the Content API, which matches the advisory&#x27;s description of &#x27;SQL injection in Content API&#x27;. The finding pinpoints the specific vulnerable code in the slug filter order utility, consistent with the root cause.</td></tr><tr><td class='mono'>mimo</td><td class='v vsame'>same_bug</td><td>The model identified a SQL injection vulnerability in the ORDER BY clause via unsanitized input from the filter parameter, which matches the advisory&#x27;s bug class and the likely root cause in the Content API.</td></tr><tr><td class='mono'>gemma31b</td><td class='v vsame'>same_bug</td><td>The model correctly identified a SQL injection (CWE-89) in the API endpoints, specifically pointing to the interpolation of user-controlled input into a SQL query, which matches the advisory&#x27;s description.</td></tr></table></div><div class='variant'><div class='rep'><span class='tag'>reported bug</span> <span class='muted'>[CWE-89, conf high]</span><br>The `slug` variable, which is derived from the user-controlled `filter` parameter, is directly interpolated into a SQL string without proper sanitization or parameterization. This allows an attacker to perform SQL injection by crafting a malicious `filter` parameter.</div><table class='judges'><tr><td class='mono'>OPUS</td><td class='v vdiff'>different_bug</td><td>CVE-2026-26980 is a SQL injection in Ghost&#x27;s Content API; the model instead flagged slug-filter-order.js, a different code path, and its claim of unsanitized interpolation does not match the actual root-cause location of the advisory&#x27;s Content API injection.</td></tr><tr><td class='mono'>deepseek</td><td class='v vsame'>same_bug</td><td>The advisory describes SQL injection in the Content API, and the model&#x27;s finding pinpoints the root cause: unsanitized interpolation of the user-controlled `filter` parameter into SQL in slug-filter-order.js, exactly matching the vulnerability.</td></tr><tr><td class='mono'>mimo</td><td class='v vsame'>same_bug</td><td>The model&#x27;s finding identifies an SQL injection vulnerability in a utility function used by the Content API, matching the advisory&#x27;s description of SQL injection in Content API and specifying the exact root cause through user-controlled input interpolation.</td></tr><tr><td class='mono'>gemma31b</td><td class='v vsame'>same_bug</td><td>The model correctly identified a SQL injection (CWE-89) in the API endpoints, specifically pointing to the interpolation of user-controlled input into a SQL string, which aligns with the advisory&#x27;s description of a SQL injection in the Content API.</td></tr></table></div></section><section><h2>GHSA-w52v-v783-gw97 — <span class='mono'>ghost/core/core/server/models/base/plugins/crud.js:113</span> <span class='badge'>Opus: different_bug &nbsp;·&nbsp; all 3 shadows: same_bug</span> <span class='muted'>(8 reporting variants)</span></h2><div class='adv'><b>GHSA-w52v-v783-gw97</b> &nbsp; CVE-2026-26980 &nbsp; CWE: CWE-89 &nbsp; class: sql-injection<br><span class='muted'>SQL injection in Content API</span></div><pre class='code'>     91             // Ensure only valid fields/columns are added to query
+     92             // and append default columns to fetch
+     93             if (options.columns) {
+     94                 options.columns = _.intersection(options.columns, this.prototype.permittedAttributes());
+     95                 options.columns = _.union(options.columns, this.prototype.defaultColumnsToFetch());
+     96             }
+     97 
+     98             if (options.order) {
+     99                 const {order, orderRaw, eagerLoad} = itemCollection.parseOrderOption(options.order, options.withRelated);
+    100                 options.orderRaw = orderRaw;
+    101                 options.order = order;
+    102                 options.eagerLoad = eagerLoad;
+    103             } else if (options.autoOrder) {
+    104                 options.orderRaw = options.autoOrder;
+    105             } else if (this.orderDefaultRaw) {
+    106                 options.orderRaw = this.orderDefaultRaw(options);
+    107             } else if (this.orderDefaultOptions) {
+    108                 options.order = this.orderDefaultOptions();
+    109             }
+    110 
+    111             if (options.selectRaw) {
+    112                 itemCollection.query((qb) =&gt; {
+&gt;&gt;  113                     qb.select(qb.client.raw(options.selectRaw));
+    114                 });
+    115             }
+    116 
+    117             if (options.whereRaw) {
+    118                 itemCollection.query((qb) =&gt; {
+    119                     qb.whereRaw(options.whereRaw);
+    120                 });
+    121             }
+    122 
+    123             if (Array.isArray(options.cte)) {
+    124                 options.cte.forEach((cte) =&gt; {
+    125                     itemCollection.query((qb) =&gt; {
+    126                         qb.with(cte.name, qb.client.raw(cte.query));
+    127                     });
+    128                 });
+    129             }
+    130 
+    131             if (options.from) {
+    132                 itemCollection.query((qb) =&gt; {
+    133                     qb.from(options.from);
+    134                 });
+    135             }</pre><div class='variant'><div class='rep'><span class='tag'>reported bug</span> <span class='muted'>[CWE-89, conf low]</span><br>options.selectRaw is passed directly to Knex&#x27;s raw() with no sanitization or parameterized bindings. Subclasses (e.g. post.js, mention.js, member-click-event.js) permit this option. Any caller that derives selectRaw from user input enables arbitrary SQL injection in the SELECT clause.</div><table class='judges'><tr><td class='mono'>OPUS</td><td class='v vdiff'>different_bug</td><td>The model only flagged a generic selectRaw passthrough in the base CRUD plugin with low confidence, speculating that some hypothetical caller might derive it from user input — it never identified the actual Content API injection path or filter. This is a speculative gesture at raw-SQL usage, not identification of the specific CVE-2026-26980 vulnerability.</td></tr><tr><td class='mono'>deepseek</td><td class='v vsame'>same_bug</td><td>The advisory describes a critical SQL injection in the Content API, and the model&#x27;s finding identifies the precise root cause: unsanitized passage of &#x27;options.selectRaw&#x27; to Knex&#x27;s raw() in the crud plugin, enabling SQL injection in SELECT clauses. This matches the same vulnerability.</td></tr><tr><td class='mono'>mimo</td><td class='v vsame'>same_bug</td><td>The model&#x27;s finding of SQL injection via unsanitized selectRaw in the CRUD plugin matches the advisory&#x27;s CWE-89 and general description of SQL injection in the Content API, indicating the same root cause in the query-building layer.</td></tr><tr><td class='mono'>gemma31b</td><td class='v vsame'>same_bug</td><td>The model correctly identified a SQL injection vulnerability (CWE-89) caused by passing unsanitized input to Knex&#x27;s raw() function within the CRUD plugin, which aligns with the advisory&#x27;s description of a SQL injection in the Content API.</td></tr></table></div><div class='variant'><div class='rep'><span class='tag'>reported bug</span> <span class='muted'>[89, conf medium]</span><br>The selectRaw option is passed directly to Knex&#x27;s raw() without any value sanitization or validation. While filterOptions limits which option keys are permitted, it does not validate option values. For the Post model, selectRaw is a permitted option for findPage, and the API serializer only filters out specific column names (mobiledoc/lexical) without validating that values are legitimate column names. An attacker can inject arbitrary SQL via the selectRaw query parameter (e.g., &#x27;id,(SELECT password FROM users LIMIT 1) as pwned&#x27;), which is executed as raw SQL. This is a SQL injection vulnerability.</div><table class='judges'><tr><td class='mono'>OPUS</td><td class='v vdiff'>different_bug</td><td>The advisory only states a generic SQL injection in the Content API, while the model proposes a specific and speculative vector — an unvalidated selectRaw option reaching Knex raw() — that depends on selectRaw being attacker-controllable through the Content API, which is not established. Ghost Content API SQL injections are characteristically in NQL filter/order parsing rather than selectRaw, so this reads as a different, hypothesized flaw rather than the specific fixed bug.</td></tr><tr><td class='mono'>deepseek</td><td class='v vsame'>same_bug</td><td>The advisory describes a SQL injection in the Content API, and the model&#x27;s finding pinpoints the exact mechanism: unsanitized user input passed via the `selectRaw` option to Knex&#x27;s `raw()` in the `findPage` method, allowing arbitrary SQL execution. This is the same root-cause flaw.</td></tr><tr><td class='mono'>mimo</td><td class='v vsame'>same_bug</td><td>The model&#x27;s finding identifies a specific SQL injection vulnerability through the unsanitized &#x27;selectRaw&#x27; option in the CRUD plugin, which matches the critical SQL injection bug in the Content API described in the advisory, sharing the same CWE-89 root cause.</td></tr><tr><td class='mono'>gemma31b</td><td class='v vsame'>same_bug</td><td>The model correctly identified a SQL injection vulnerability (CWE-89) in the Content API&#x27;s CRUD logic, specifically pointing to the unsanitized use of selectRaw in Knex&#x27;s raw() function.</td></tr></table></div><div class='variant'><div class='rep'><span class='tag'>reported bug</span> <span class='muted'>[CWE-89, conf high]</span><br>selectRaw option is passed directly to Knex raw() without parameterization. Models like Post permit this option via permittedOptions. Insufficient input validation in serializers (only filters mobiledoc/lexical, doesn&#x27;t validate SQL syntax) allows injection like: selectRaw=id,(SELECT password FROM users) as p</div><table class='judges'><tr><td class='mono'>OPUS</td><td class='v vdiff'>different_bug</td><td>Both are CWE-89 SQL injection, but the model points to an internal `selectRaw` model option in the base CRUD plugin and speculatively assumes it is reachable as a user-facing Content API query parameter — which it is not by default. This is a generic same-class finding in a plausible area rather than identification of the specific Content API injection vector the advisory fixed.</td></tr><tr><td class='mono'>deepseek</td><td class='v vsame'>same_bug</td><td>The model pinpoints a specific SQL injection via the unparameterized selectRaw option in the Content API, matching the advisory&#x27;s vulnerability class (CWE-89), severity, and description of an SQL injection in the Content API.</td></tr><tr><td class='mono'>mimo</td><td class='v vsame'>same_bug</td><td>The model&#x27;s finding specifically identifies SQL injection through the selectRaw option being passed unsanitized to Knex raw(), which matches the advisory&#x27;s description of an SQL injection vulnerability in the Content API and represents the same root-cause flaw.</td></tr><tr><td class='mono'>gemma31b</td><td class='v vsame'>same_bug</td><td>The model correctly identified a SQL injection vulnerability (CWE-89) in the CRUD plugin, which is the core mechanism for the Content API, matching the advisory&#x27;s description.</td></tr></table></div><div class='variant'><div class='rep'><span class='tag'>reported bug</span> <span class='muted'>[CWE-89, conf high]</span><br>When a model&#x27;s permittedOptions includes &#x27;selectRaw&#x27; for findPage (e.g., Post model), user-controlled selectRaw strings are directly passed to Knex&#x27;s raw() method without parameterization, enabling SQL injection.</div><table class='judges'><tr><td class='mono'>OPUS</td><td class='v vdiff'>different_bug</td><td>The advisory is a Content API SQL injection (CVE-2026-26980), which in Ghost stems from user-supplied input parsing (e.g. filter/order handling reachable via the public API), whereas the model flagged the internal `selectRaw` permittedOption in the base CRUD plugin — a different mechanism not actually user-controllable through the Content API. It names a plausible but distinct SQLi rather than the fixed root-cause bug.</td></tr><tr><td class='mono'>deepseek</td><td class='v vsame'>same_bug</td><td>The model identifies a user-controlled selectRaw option passed unsafely to Knex&#x27;s raw() in findPage, which matches the advisory&#x27;s SQL injection in the Content API.</td></tr><tr><td class='mono'>mimo</td><td class='v vsame'>same_bug</td><td>The model&#x27;s finding identifies a specific SQL injection vulnerability in the Content API via unsanitized selectRaw input passed to Knex&#x27;s raw() method, which aligns with the root cause described in the advisory.</td></tr><tr><td class='mono'>gemma31b</td><td class='v vsame'>same_bug</td><td>The model correctly identified a SQL injection vulnerability (CWE-89) within the Content API&#x27;s CRUD logic, which aligns with the advisory&#x27;s description.</td></tr></table></div><div class='variant'><div class='rep'><span class='tag'>reported bug</span> <span class='muted'>[CWE-89, conf high]</span><br>SQL injection vulnerability: options.selectRaw is passed directly to raw SQL without validation or parameterization. Models like Mention explicitly permit this option for findPage, allowing attackers to inject arbitrary SQL.</div><table class='judges'><tr><td class='mono'>OPUS</td><td class='v vdiff'>different_bug</td><td>The advisory describes a SQL injection reachable through the public Content API, whereas the model flagged `options.selectRaw`, an internal model option not settable via Content API request parameters — a different injection sink and attack vector rather than the disclosed user-facing flaw.</td></tr><tr><td class='mono'>deepseek</td><td class='v vsame'>same_bug</td><td>The advisory describes a SQL injection in the Content API, and the model&#x27;s finding pinpoints a concrete SQL injection vector via options.selectRaw in a core model plugin used by the Content API, matching the described bug class and scope.</td></tr><tr><td class='mono'>mimo</td><td class='v vsame'>same_bug</td><td>The model&#x27;s finding directly identifies the SQL injection vulnerability via unsanitized options.selectRaw in the Content API code, which aligns with the advisory&#x27;s root cause for CVE-2026-26980.</td></tr><tr><td class='mono'>gemma31b</td><td class='v vsame'>same_bug</td><td>The model correctly identified a SQL injection vulnerability (CWE-89) in the Content API (specifically within the crud plugin used by findPage), which matches the advisory&#x27;s description.</td></tr></table></div><div class='variant'><div class='rep'><span class='tag'>reported bug</span> <span class='muted'>[CWE-89, conf medium]</span><br>SQL injection: options.selectRaw is interpolated directly into a raw SQL SELECT clause via qb.client.raw(). The Post model permits &#x27;selectRaw&#x27; in findPage options, and the API input serializer only strips &#x27;mobiledoc&#x27;/&#x27;lexical&#x27; column names — it does not validate against SQL injection. An authenticated admin API caller can inject arbitrary SQL through the selectRaw query parameter when browsing posts (e.g. &#x27;id; DROP TABLE users--&#x27;).</div><table class='judges'><tr><td class='mono'>OPUS</td><td class='v vdiff'>different_bug</td><td>The advisory is a SQL injection in the Content API (the public/read API), while the model flagged injection via the `selectRaw` option reachable only by an authenticated admin caller — a different attack surface and injection point, not the Content API vector the fix addressed.</td></tr><tr><td class='mono'>deepseek</td><td class='v vsame'>same_bug</td><td>The model identifies SQL injection via unsanitized `selectRaw` parameter in the Content API&#x27;s Post browsing endpoint, which directly matches the advisory&#x27;s description of a critical SQL injection in the Content API.</td></tr><tr><td class='mono'>mimo</td><td class='v vsame'>same_bug</td><td>The model identified SQL injection through the selectRaw parameter in the Post model&#x27;s findPage options, which matches the advisory&#x27;s critical SQL injection in Content API, indicating the same root cause.</td></tr><tr><td class='mono'>gemma31b</td><td class='v vsame'>same_bug</td><td>The model correctly identified a SQL injection vulnerability (CWE-89) within the Content API&#x27;s CRUD logic, specifically pointing to the unsafe interpolation of &#x27;selectRaw&#x27; into a raw SQL query.</td></tr></table></div><div class='variant'><div class='rep'><span class='tag'>reported bug</span> <span class='muted'>[CWE-89, conf high]</span><br>The selectRaw option value is passed directly to Knex&#x27;s raw query builder without any validation or sanitization. If user input can reach this option (which is permitted for findPage in models like Mention and MemberClickEvent), it allows arbitrary SQL injection via the SELECT clause.</div><table class='judges'><tr><td class='mono'>OPUS</td><td class='v vdiff'>different_bug</td><td>The advisory describes a SQL injection reachable through the public Content API, whereas the model flagged a speculative injection via the internal `selectRaw` option whose only cited callers are the Mention and MemberClickEvent models—not Content API endpoints—and it hedges that exploitation depends on whether user input can even reach that option. This is a different code path and a different root cause, not the disclosed Content API SQLi.</td></tr><tr><td class='mono'>deepseek</td><td class='v vsame'>same_bug</td><td>The advisory describes a SQL injection in the Content API, and the model&#x27;s finding pinpoints the exact vulnerable mechanism: unsanitized use of the selectRaw option in the CRUD plugin&#x27;s query builder, which matches the root cause and context.</td></tr><tr><td class='mono'>mimo</td><td class='v vsame'>same_bug</td><td>Both the advisory and the model&#x27;s finding identify SQL injection (CWE-89), and the model&#x27;s specific root cause—unsanitized selectRaw input in a base model plugin—is consistent with the Content API vulnerability described in the ground truth.</td></tr><tr><td class='mono'>gemma31b</td><td class='v vsame'>same_bug</td><td>The model correctly identifies a SQL injection (CWE-89) in the model layer (crud.js) that handles data retrieval, which is the root cause for the SQL injection reported in the Content API.</td></tr></table></div><div class='variant'><div class='rep'><span class='tag'>reported bug</span> <span class='muted'>[CWE-89, conf medium]</span><br>The `selectRaw` option is passed directly to `qb.client.raw()` which executes arbitrary SQL. The `selectRaw` option is permitted in `permittedOptions` for the post model&#x27;s `findPage` method (post.js line 1203), and there is a serializer in posts.js that processes user-provided `selectRaw` values. The serializer only filters out &#x27;mobiledoc&#x27; and &#x27;lexical&#x27; column names but does not validate that the input consists of valid column names. An attacker could inject arbitrary SQL by providing a malicious `selectRaw` value such as `id, (SELECT password FROM users)--` which would be executed as raw SQL in the SELECT clause.</div><table class='judges'><tr><td class='mono'>OPUS</td><td class='v vdiff'>different_bug</td><td>The advisory only states &#x27;SQL injection in Content API&#x27; without specifying the vector, while the model pins the flaw on the `selectRaw` option reaching `qb.client.raw()`. Ghost&#x27;s Content API SQL injection fixes have typically centered on filter/order (NQL) parsing rather than `selectRaw`, and there is no evidence this specific path is the root cause the fix addressed, so this reads as a plausible but distinct injection point rather than confirmably the same bug.</td></tr><tr><td class='mono'>deepseek</td><td class='v vsame'>same_bug</td><td>The model identified an SQL injection in Ghost&#x27;s Content API via the `selectRaw` parameter, which precisely matches the advisory&#x27;s description of a critical SQL injection (CWE-89) in the Content API. The root cause—lack of validation of `selectRaw` passed to raw SQL execution—is the same vulnerability.</td></tr><tr><td class='mono'>mimo</td><td class='v vsame'>same_bug</td><td>The model&#x27;s finding identifies SQL injection through the `selectRaw` option in the Content API&#x27;s post model, which directly corresponds to the advisory&#x27;s description of SQL injection in the Content API, sharing the same root cause of unsafe handling of user input.</td></tr><tr><td class='mono'>gemma31b</td><td class='v vsame'>same_bug</td><td>The model identifies a specific SQL injection vulnerability in the Content API (via the post model&#x27;s use of selectRaw), which directly matches the bug class and description provided in the advisory.</td></tr></table></div></section><section><h2>GHSA-x9h5-r9v2-vcww — <span class='mono'>MagickCore/draw.c:3470</span> <span class='badge'>Opus: different_bug &nbsp;·&nbsp; all 3 shadows: same_bug</span> <span class='muted'>(1 reporting variant)</span></h2><div class='adv'><b>GHSA-x9h5-r9v2-vcww</b> &nbsp; CVE-2026-33901 &nbsp; CWE: CWE-122 &nbsp; class: heap-buffer-overflow<br><span class='muted'>Heap buffer overflow in MVG pattern rendering via CopyMagickString without bounds check</span></div><pre class='code'>   3448                   (void) GetNextToken(q,&amp;q,extent,token);
+   3449                 segment.y1=GetDrawValue(token,&amp;next_token);
+   3450                 if (token == next_token)
+   3451                   ThrowPointExpectedException(token,exception);
+   3452                 (void) GetNextToken(q,&amp;q,extent,token);
+   3453                 if (*token == &#x27;,&#x27;)
+   3454                   (void) GetNextToken(q,&amp;q,extent,token);
+   3455                 segment.x2=GetDrawValue(token,&amp;next_token);
+   3456                 if (token == next_token)
+   3457                   ThrowPointExpectedException(token,exception);
+   3458                 (void) GetNextToken(q,&amp;q,extent,token);
+   3459                 if (*token == &#x27;,&#x27;)
+   3460                   (void) GetNextToken(q,&amp;q,extent,token);
+   3461                 segment.y2=GetDrawValue(token,&amp;next_token);
+   3462                 if (token == next_token)
+   3463                   ThrowPointExpectedException(token,exception);
+   3464                 if (LocaleCompare(type,&quot;radial&quot;) == 0)
+   3465                   {
+   3466                     (void) GetNextToken(q,&amp;q,extent,token);
+   3467                     if (*token == &#x27;,&#x27;)
+   3468                       (void) GetNextToken(q,&amp;q,extent,token);
+   3469                   }
+&gt;&gt; 3470                 for (p=q; *q != &#x27;\0&#x27;; )
+   3471                 {
+   3472                   if (GetNextToken(q,&amp;q,extent,token) &lt; 1)
+   3473                     break;
+   3474                   if (LocaleCompare(token,&quot;pop&quot;) != 0)
+   3475                     continue;
+   3476                   (void) GetNextToken(q,(const char **) NULL,extent,token);
+   3477                   if (LocaleCompare(token,&quot;gradient&quot;) != 0)
+   3478                     continue;
+   3479                   break;
+   3480                 }
+   3481                 if ((q == (char *) NULL) || (*q == &#x27;\0&#x27;) ||
+   3482                     (p == (char *) NULL) || ((q-4) &lt; p))
+   3483                   {
+   3484                     status=MagickFalse;
+   3485                     break;
+   3486                   }
+   3487                 (void) CopyMagickString(token,p,(size_t) (q-p-4+1));
+   3488                 bounds.x1=graphic_context[n]-&gt;affine.sx*segment.x1+
+   3489                   graphic_context[n]-&gt;affine.ry*segment.y1+
+   3490                   graphic_context[n]-&gt;affine.tx;
+   3491                 bounds.y1=graphic_context[n]-&gt;affine.rx*segment.x1+
+   3492                   graphic_context[n]-&gt;affine.sy*segment.y1+</pre><div class='variant'><div class='rep'><span class='tag'>reported bug</span> <span class='muted'>[CWE-787, conf medium]</span><br>In the MVG &#x27;push gradient&#x27; handler, upstream guards this copy with `((q-p+4+1) &gt; MagickPathExtent)` so the copied gradient-definition substring cannot exceed MagickPathExtent. That bounds check was deleted (only `(q-4) &lt; p` remains), so the length `q-p-4+1`, fully controlled by the distance between the attacker-supplied &#x27;push gradient&#x27; and matching &#x27;pop gradient&#x27; tokens in the MVG/DRW input, is passed unchecked to CopyMagickString. With the size-cap removed the gradient body length is no longer validated before being copied into the parser token buffer, reintroducing the classic gradient-definition buffer overflow that this check exists to prevent. Reachable from any untrusted .mvg/SVG/-draw input.</div><table class='judges'><tr><td class='mono'>OPUS</td><td class='v vdiff'>different_bug</td><td>The advisory pins the overflow to MVG *pattern* rendering, but the model flagged the *push gradient* handler — a structurally parallel but distinct code block and MVG primitive. Although the mechanism (unchecked CopyMagickString after a deleted bounds guard) matches the bug class, the model named a different specific location/flaw rather than the pattern-rendering vulnerability the fix addressed.</td></tr><tr><td class='mono'>deepseek</td><td class='v vsame'>same_bug</td><td>The model&#x27;s finding describes a heap buffer overflow in MVG gradient parsing where a necessary bounds check before CopyMagickString was removed, exactly the vulnerability described in the advisory.</td></tr><tr><td class='mono'>mimo</td><td class='v vsame'>same_bug</td><td>The model correctly identifies the specific vulnerability: a missing bounds check on the attacker-controlled length passed to CopyMagickString in MVG gradient handling in draw.c, leading to a heap buffer overflow. This matches the advisory&#x27;s description of a heap buffer overflow in MVG rendering via CopyMagickString without bounds check. The CWE-787 vs CWE-122 distinction is immaterial since CWE-122 (heap buffer overflow) is a child of CWE-787 (out-of-bounds write), and the root cause—removed length validation before CopyMagickString—is identical.</td></tr><tr><td class='mono'>gemma31b</td><td class='v vsame'>same_bug</td><td>The model correctly identifies the heap buffer overflow in the MVG pattern rendering process specifically caused by a missing bounds check when calling CopyMagickString, which matches the advisory.</td></tr></table></div></section>
+</body></html>

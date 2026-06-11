@@ -1,0 +1,77 @@
+<!doctype html><html><head><meta charset=utf-8>
+<title>Shadow judging — can cheap models replace the Opus truth judge?</title>
+<style>
+:root { --bg:#15171c; --fg:#e8e8ea; --muted:#9aa0aa; --line:#2c2f36;
+        --good:#4ea36a; --amber:#c98a2e; --bad:#c0564b; --accent:#6ea8d8; }
+body { background:var(--bg); color:var(--fg); font:14px/1.5 -apple-system,
+        Segoe UI, Roboto, sans-serif; margin:0; padding:32px 40px; }
+h1 { font-size:21px; margin:0 0 4px; }
+h2 { font-size:16px; margin:30px 0 10px; color:var(--accent); }
+.sub { color:var(--muted); margin:0 0 8px; }
+table { border-collapse:collapse; width:100%; margin:6px 0 4px; }
+th,td { text-align:left; padding:6px 10px; border-bottom:1px solid var(--line); }
+th { color:var(--muted); font-weight:600; font-size:12px;
+     text-transform:uppercase; letter-spacing:.03em; }
+td.num { text-align:right; font-variant-numeric:tabular-nums; }
+.big { font-size:16px; font-weight:700; }
+.mono { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:12.5px; }
+.muted { color:var(--muted); font-size:12px; }
+.cards { display:flex; gap:14px; flex-wrap:wrap; margin:8px 0; }
+.card { background:#1b1e24; border:1px solid var(--line); border-radius:8px;
+         padding:14px 18px; min-width:190px; }
+.card .v { font-size:26px; font-weight:700; }
+.card .l { color:var(--muted); font-size:12px; }
+</style></head><body>
+<h1>Shadow judging: can a cheap panel reproduce the Opus truth judge?</h1>
+<p class="sub">193 distinct (advisory + reported-finding) inputs Opus already
+truth-judged (138 <b>same_bug</b> / 55 <b>different_bug</b>), replayed
+through each candidate judge. Each model's verdict = majority over its trials.
+"different_bug" is the hard, discriminating class: a judge that rubber-stamps
+"same_bug" scores high accuracy on the majority class but useless diffRecall.</p>
+
+<h2>Per-model agreement with Opus</h2>
+<table>
+<tr><th>model</th><th>accuracy</th><th>kappa</th>
+<th>diffRecall (n)</th><th>sameRecall (n)</th>
+<th>self-consist</th><th>flips</th><th>confusion</th><th>err/unp</th>
+<th>lat med/p95 ms</th></tr>
+<tr><td class='mono'>deepseek</td><td class='num big'>89%</td><td class='num'>0.71</td><td class='num'>70% <span class='muted'>(53)</span></td><td class='num'>96% <span class='muted'>(137)</span></td><td class='num'>98%</td><td class='num'>4</td><td class='num'>TP 132 / FN 5 / FP 16 / TN 37</td><td class='num'>8<span class='muted'>/8u</span></td><td class='num'>10954/27212</td></tr><tr><td class='mono'>mimo</td><td class='num big'>88%</td><td class='num'>0.65</td><td class='num'>58% <span class='muted'>(52)</span></td><td class='num'>99% <span class='muted'>(135)</span></td><td class='num'>92%</td><td class='num'>15</td><td class='num'>TP 134 / FN 1 / FP 22 / TN 30</td><td class='num'>43<span class='muted'>/43u</span></td><td class='num'>24292/48390</td></tr><tr><td class='mono'>gemma31b</td><td class='num big'>85%</td><td class='num'>0.60</td><td class='num'>55% <span class='muted'>(55)</span></td><td class='num'>98% <span class='muted'>(138)</span></td><td class='num'>99%</td><td class='num'>2</td><td class='num'>TP 135 / FN 3 / FP 25 / TN 30</td><td class='num'>1<span class='muted'>/1u</span></td><td class='num'>24420/59905</td></tr>
+</table>
+<p class="muted">accuracy & kappa over non-conflict inputs with a usable verdict;
+confusion is vs Opus (positive = same_bug): TP same✓ / FN missed-same / FP
+false-same / TN different✓. self-consist = share of inputs whose trials all agreed.</p>
+
+<h2>3-judge panel (majority vote of the three models)</h2>
+<div class="cards">
+<div class="card"><div class="v">90%</div>
+<div class="l">panel majority matches Opus<br>(166/184)</div></div>
+<div class="card"><div class="v">91%</div>
+<div class="l">when all 3 agree, match Opus<br>(156/171 unanimous)</div></div>
+<div class="card"><div class="v">77%</div>
+<div class="l">on 2-1 splits, majority matches Opus<br>(10/13)</div></div>
+<div class="card"><div class="v">171/184</div>
+<div class="l">inputs that are unanimous<br>(the "easy" share)</div></div>
+</div>
+<p class="muted">The voting hypothesis: where the panel is unanimous it should track
+Opus closely (easy cases, no vote needed); the value is on the 2-1 splits, which are
+exactly the borderline calls a tie-break is for.</p>
+
+<h2>Directional bias — how each judge errs vs Opus</h2>
+<p class="muted">FP = over-calls <b>same_bug</b> when Opus said different (lenient: would
+turn a MISS into a false HIT). FN = calls <b>different</b> when Opus said same (strict:
+would suppress a real hit). Every model leans lenient (FP &gt; FN), so a cheap vote
+resolves borderline calls <b>toward HIT</b>, not Opus's stricter "different".</p>
+<table>
+<tr><th>model</th><th>FP — over-calls same (lenient)</th>
+<th>FN — misses same (strict)</th></tr>
+<tr><td class='mono'>deepseek</td><td class='num'>16</td><td class='num'>5</td></tr><tr><td class='mono'>mimo</td><td class='num'>22</td><td class='num'>1</td></tr><tr><td class='mono'>gemma31b</td><td class='num'>25</td><td class='num'>3</td></tr>
+</table>
+
+<h2>Distinct spots where all 3 shadows agree but contradict Opus (6)</h2>
+<p class="muted">Deduped by (case, file, line) — one spot reported many ways collapses
+to one row. All three cheap judges agreed with each other but disagreed with Opus:
+either Opus is borderline/wrong here, or the panel shares a lenient blind spot. Note
+these are nearly all the panel calling a localized-but-different finding "same" — incl.
+the cc7p case the partial tier rules right-place/wrong-bug. Worth a human spot-check.</p>
+<table><tr><td class='mono'>GHSA-cc7p-2j3x-x7xf</td><td class='mono'>src/services/Tokens.php:136</td><td>opus said <b>different</b>, all 3 shadows said <b>same</b></td></tr><tr><td class='mono'>GHSA-cc7p-2j3x-x7xf</td><td class='mono'>src/web/Controller.php:527</td><td>opus said <b>different</b>, all 3 shadows said <b>same</b></td></tr><tr><td class='mono'>GHSA-j273-m5qq-6825</td><td class='mono'>src/main/java/com/github/junrar/LocalFolderExtractor.java:62</td><td>opus said <b>same</b>, all 3 shadows said <b>different</b></td></tr><tr><td class='mono'>GHSA-w52v-v783-gw97</td><td class='mono'>ghost/core/core/server/api/endpoints/utils/serializers/input/utils/slug-filter-order.js:9</td><td>opus said <b>different</b>, all 3 shadows said <b>same</b> <span class=muted>(x3 input variants)</span></td></tr><tr><td class='mono'>GHSA-w52v-v783-gw97</td><td class='mono'>ghost/core/core/server/models/base/plugins/crud.js:113</td><td>opus said <b>different</b>, all 3 shadows said <b>same</b> <span class=muted>(x8 input variants)</span></td></tr><tr><td class='mono'>GHSA-x9h5-r9v2-vcww</td><td class='mono'>MagickCore/draw.c:3470</td><td>opus said <b>different</b>, all 3 shadows said <b>same</b></td></tr></table>
+</body></html>
