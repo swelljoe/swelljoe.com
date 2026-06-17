@@ -38,6 +38,8 @@ Note GPT 5.5 Pro is at the top of the leaderboard only because it blew through $
 
 Updated on June 7th, 2026 to add Gemma 4 models, and MiniMax M3. Gemma 4 MoE somehow moves into a leading position, by detecting 4/9 bugs with 100% precision (same as MiMo and GPT 5.5, and better than Google's leading commercial models), though it has the caveat that it got multiple attempts because `llama-server` kept crashing or otherwise failed in a way that the model got another attempt. I suspect other models would also fare better with a few extra tries. I'll do a version of this benchmark with multiple attempts soon (minus the really expensive models, because I'm not made of money and we already know they're pretty good). That's why it appears as 3/7 on the chart...but, it found another bug while I was fiddling with `llama-server` configuration trying to get the two failed runs to complete with that model. The bug it found during that fiddling was a hard bug that *only* Opus found, until Gemma 4 also found it.
 
+Updated June 17, 2026 to add GLM 5.2, Kimi K2.7-code, and VibeThinker 3B. No major surprises, GLM got better, Kimi didn't. VibeThinker, the tiniest model in the bunch, is unsurprisingly not capable of this task at all.
+
 Surprises
 =========
 
