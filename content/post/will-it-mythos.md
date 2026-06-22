@@ -42,6 +42,8 @@ Updated June 17, 2026 to add GLM 5.2, Kimi K2.7-code, and VibeThinker 3B. No maj
 
 Updated June 21, 2026 to add Nemotron Ultra 550b a55b and North Mini Code 33b a3b. Both did poorly. In the former case, the bigger version of Nemotron did notably worse than its smaller 120b sibling, for reasons I don't know (but a replication run may flip that, I'll get to it soon). North Mini Code did OK, for a small model, but Qwen 3.6 and Gemma 4 beats it in all cases (Gemma 4 31b appears lower on the chart, but realistically it found 4/9 it just misinterpreted a couple of them). 
 
+Updated June 22, 2026 to add Nemotron 3 Nano Omni and Laguna XS.2, to fill out the family tree of Nemotron and Laguna. Weirdly, both outperform their bigger siblings. I don't have an explanation for that. Nemotron seemingly has an inverse relationship between model size and performance in finding security bugs. That's surprising. More data needed.
+
 Surprises
 =========
 
