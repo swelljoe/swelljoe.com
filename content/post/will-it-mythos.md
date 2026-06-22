@@ -40,6 +40,8 @@ Updated on June 7th, 2026 to add Gemma 4 models, and MiniMax M3. Gemma 4 MoE som
 
 Updated June 17, 2026 to add GLM 5.2, Kimi K2.7-code, and VibeThinker 3B. No major surprises, GLM got better, Kimi didn't. VibeThinker, the tiniest model in the bunch, is unsurprisingly not capable of this task at all.
 
+Updated June 21, 2026 to add Nemotron Ultra 550b a55b and North Mini Code 33b a3b. Both did poorly. In the former case, the bigger version of Nemotron did notably worse than its smaller 120b sibling, for reasons I don't know (but a replication run may flip that, I'll get to it soon). North Mini Code did OK, for a small model, but Qwen 3.6 and Gemma 4 beats it in all cases (Gemma 4 31b appears lower on the chart, but realistically it found 4/9 it just misinterpreted a couple of them). 
+
 Surprises
 =========
 
