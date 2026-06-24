@@ -1,26 +1,149 @@
-<!doctype html><meta charset=utf-8>
-<title>Nelson — Gemma 4 QAT prompt-lab (9-case)</title><style>
-body{font:15px/1.5 -apple-system,Segoe UI,Roboto,sans-serif;max-width:1000px;
-margin:2rem auto;padding:0 1rem;color:#1a1a1a}
-h1{font-size:1.6rem;margin-bottom:.2rem}h2{margin-top:2.2rem;border-bottom:2px solid #eee;padding-bottom:.3rem}
-.sub{color:#666;margin-top:0}
-.callout{background:#fff8f0;border:1px solid #f0c890;border-left:5px solid #e08a2b;
-border-radius:6px;padding:1rem 1.2rem;margin:1.2rem 0}
-.callout b{color:#b5530a}
-.big{font-size:1.15rem;font-weight:600}
-table{border-collapse:collapse;width:100%;margin:.8rem 0;font-size:14px}
-th,td{border:1px solid #ddd;padding:.4rem .6rem;text-align:center}
-th{background:#f4f4f4}td.l,th.l{text-align:left}
-.hit{background:#dff5e1;color:#1c6b2c;font-weight:600}
-.miss{background:#fde8e8;color:#9b1c1c}
-.part{background:#fff6da;color:#8a6d00}
-.nd{background:#f2f2f2;color:#999}
+<!doctype html><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Nelson — Gemma 4 QAT prompt-lab (9-case)</title><script>(function(){try{var t=localStorage.getItem('nelson-theme');if(t!=='light'&&t!=='dark'){t=window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';}document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script><style>
+:root{
+  --bg:#ffffff; --surface:#fafafa; --surface-2:#f1f2f4; --border:#dcdee2;
+  --text:#1a1a1a; --text-muted:#646a73;
+  --accent:#b5530a; --blue:#2563a8; --cyan:#0f7b8a;
+  --good:#1c6b2c; --amber:#8a6d00; --bad:#9b1c1c; --yellow:#8a6d00;
+  --good-bg:#dff5e1; --amber-bg:#fff6da; --bad-bg:#fde8e8; --muted-bg:#eef0f2;
+  --callout-bg:#fff8f0; --callout-border:#f0c890; --callout-edge:#e08a2b;
+  --hover:rgba(37,99,168,.06); --shadow:0 1px 2px rgba(0,0,0,.06);
+  /* back-compat aliases for pre-unification token names (resolve per-theme) */
+  --red:var(--bad); --green:var(--good); --surface2:var(--surface-2); --orange:#c2410c;
+}
+:root[data-theme="dark"]{
+  --bg:#15171c; --surface:#1b1e24; --surface-2:#23272f; --border:#2c2f36;
+  --text:#e8e8ea; --text-muted:#9aa0aa;
+  --accent:#d98a4a; --blue:#6ea8d8; --cyan:#56cfe1;
+  --good:#5fbf7f; --amber:#d6a24a; --bad:#d2685c; --yellow:#d6a24a;
+  --good-bg:rgba(95,191,127,.15); --amber-bg:rgba(214,162,74,.15);
+  --bad-bg:rgba(210,104,92,.15); --muted-bg:rgba(154,160,170,.12);
+  --callout-bg:#241d14; --callout-border:#5a4424; --callout-edge:#d6a24a;
+  --hover:rgba(110,168,216,.08); --shadow:0 1px 2px rgba(0,0,0,.35);
+  --orange:#e0934a;
+}
+
+*{box-sizing:border-box}
+html{color-scheme:light dark}
+body{
+  font:16px/1.6 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  background:var(--bg); color:var(--text);
+  margin:0 auto; padding:2.2rem 1.3rem; max-width:1100px;
+}
+h1{font-size:1.7rem; line-height:1.25; margin:0 0 .3rem; color:var(--text)}
+h2{font-size:1.25rem; margin:2rem 0 .7rem; color:var(--blue);
+   border-bottom:1px solid var(--border); padding-bottom:.3rem}
+h3{font-size:1.05rem; margin:1.2rem 0 .5rem; color:var(--cyan)}
+p{margin:.55rem 0}
+a{color:var(--blue); text-decoration:none}
+a:hover{text-decoration:underline}
+.sub,.subtitle,.lede,.intro{color:var(--text-muted); margin:.15rem 0 1.2rem}
+.muted{color:var(--text-muted); font-size:.82rem}
+small{color:var(--text-muted)}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  font-size:.82rem}
+.big{font-size:1.1rem; font-weight:700}
+b,strong{color:var(--text)}
+
+/* tables: clean ruled rows in a rounded surface */
+table{border-collapse:collapse; width:100%; margin:.85rem 0; font-size:.9rem;
+  background:var(--surface); border:1px solid var(--border); border-radius:8px;
+  overflow:hidden}
+th,td{padding:.45rem .65rem; text-align:left; border-bottom:1px solid var(--border)}
+th{background:var(--surface-2); color:var(--text-muted); font-weight:600;
+  font-size:.74rem; text-transform:uppercase; letter-spacing:.03em}
+tr:last-child td{border-bottom:none}
+tbody tr:hover{background:var(--hover)}
+td.num,th.num{text-align:right; font-variant-numeric:tabular-nums}
+td.l,th.l{text-align:left}
+td.c,th.c{text-align:center}
+/* opt-in spreadsheet grid (bordered + centered cells) for dense matrices */
+table.grid th,table.grid td{border:1px solid var(--border); text-align:center}
+table.grid td.l,table.grid th.l{text-align:left}
+
+/* filled status cells (experiment-report vocabulary); centered for matrix legibility */
+.hit{background:var(--good-bg); color:var(--good); font-weight:600; text-align:center}
+.miss{background:var(--bad-bg); color:var(--bad); text-align:center}
+.part{background:var(--amber-bg); color:var(--amber); font-weight:600;
+  text-align:center}
+.nd{background:var(--muted-bg); color:var(--text-muted); text-align:center}
+.good{color:var(--good)} .amber{color:var(--amber)} .bad{color:var(--bad)}
+
+/* badges + tags */
+.badge{display:inline-block; padding:.12rem .5rem; border-radius:999px;
+  font-size:.74rem; font-weight:600;
+  background:var(--surface-2); color:var(--text-muted)}
+.badge-high,.badge-confirmed,.badge-error{background:var(--bad-bg); color:var(--bad)}
+.badge-medium,.badge-needs_review,.badge-running,.badge-pending{
+  background:var(--amber-bg); color:var(--amber)}
+.badge-low,.badge-unreviewed{background:var(--muted-bg); color:var(--text-muted)}
+.badge-false_positive,.badge-resolved,.badge-complete{
+  background:var(--good-bg); color:var(--good)}
+.tag{display:inline-block; font-size:.7rem; padding:.05rem .45rem; border-radius:999px;
+  background:var(--surface-2); color:var(--text-muted); margin-left:.4rem}
+.tag.hard{background:var(--bad-bg); color:var(--bad)}
+
+/* cards */
+.card{background:var(--surface); border:1px solid var(--border); border-radius:8px;
+  padding:.9rem 1.1rem; margin:.6rem 0}
+.cards{display:flex; gap:.9rem; flex-wrap:wrap; margin:.6rem 0}
+.card .v,.cards .v{font-size:1.6rem; font-weight:700}
+.card .l,.cards .l{color:var(--text-muted); font-size:.78rem}
+.stats-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr));
+  gap:.75rem; margin:.8rem 0}
+.stat-card{background:var(--surface); border:1px solid var(--border); border-radius:8px;
+  padding:.8rem; text-align:center}
+.stat-value{font-size:1.7rem; font-weight:700}
+.stat-label{font-size:.78rem; color:var(--text-muted)}
+
+/* callout */
+.callout{background:var(--callout-bg); border:1px solid var(--callout-border);
+  border-left:5px solid var(--callout-edge); border-radius:8px;
+  padding:.9rem 1.1rem; margin:1.1rem 0}
+.callout b{color:var(--callout-edge)}
+
+/* code */
+code{background:var(--surface-2); padding:1px 5px; border-radius:4px; font-size:.85em;
+  font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+.code-block{background:var(--surface-2); padding:.6rem .8rem; margin:.5rem 0;
+  border:1px solid var(--border); border-radius:6px; overflow-x:auto;
+  white-space:pre-wrap; font-size:.82rem;
+  font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+
+/* findings (scan report) */
+.finding{border-left:3px solid var(--border); background:var(--surface);
+  border-radius:6px; padding:.8rem 1rem; margin:.6rem 0}
+.finding-high{border-left-color:var(--bad)}
+.finding-medium{border-left-color:var(--amber)}
+.finding-low{border-left-color:var(--text-muted)}
+.finding-header{display:flex; gap:.7rem; align-items:center; flex-wrap:wrap}
+.review-box{margin-top:.5rem; padding:.5rem .75rem; background:var(--surface-2);
+  border-radius:6px; font-size:.88rem}
+.file-group{margin:1rem 0}
+.file-name{font-family:ui-monospace,monospace; font-size:.9rem; color:var(--cyan);
+  padding:.5rem; background:var(--surface-2); border-radius:6px 6px 0 0}
+
+footer{margin-top:2.2rem; padding-top:1rem; border-top:1px solid var(--border);
+  color:var(--text-muted); font-size:.8rem}
+
+/* theme toggle */
+.theme-toggle{position:fixed; top:.7rem; right:.7rem; z-index:100;
+  background:var(--surface); color:var(--text-muted); border:1px solid var(--border);
+  border-radius:999px; padding:.3rem .75rem; font:inherit; font-size:.8rem;
+  cursor:pointer; box-shadow:var(--shadow)}
+.theme-toggle:hover{color:var(--text); border-color:var(--text-muted)}
+@media print{.theme-toggle{display:none}}
+
 .hardrow td.l{font-weight:600}
-.tag{display:inline-block;font-size:11px;padding:1px 6px;border-radius:9px;background:#eee;color:#555;margin-left:.4rem}
-.tag.hard{background:#fde8e8;color:#9b1c1c}
-small{color:#777}
-code{background:#f4f4f4;padding:1px 4px;border-radius:3px;font-size:13px}
+tr.tot td{border-top:2px solid var(--border);background:var(--surface-2)}
+.legend{font-size:13px;color:var(--text-muted);margin:.4rem 0 1.2rem}
+.vbar{display:inline-flex;width:120px;height:13px;border:1px solid var(--border);
+border-radius:2px;overflow:hidden;vertical-align:middle}
+.vbar span{display:block;height:100%}
+.vreal{background:var(--good)}.vfp{background:var(--bad)}.vrev{background:var(--text-muted)}
 </style>
+<button class="theme-toggle" type="button" onclick="(function(){var r=document.documentElement;var t=r.getAttribute('data-theme')==='dark'?'light':'dark';r.setAttribute('data-theme',t);try{localStorage.setItem('nelson-theme',t);}catch(e){}})()">◐ theme</button>
 <h1>Gemma 4 (QAT-4bit) prompt-lab — full 9-case corpus</h1>
 <p class=sub>The two new Quantization-Aware-Training 4-bit Gemma 4 models
 (<code>gemma4-31b-qat</code> dense, <code>gemma4-26b-a4b-qat</code> MoE), self-hosted
@@ -51,18 +174,47 @@ solved the case (regression guard) or missed it (the real question). Denominator
 count only cases with a completed run.</p>
 <table><tr><th class=l>model</th><th class=l>arm</th><th>solved-cases</th><th>hard-miss-cases</th></tr><tr><td class=l>gemma4-26b-a4b-qat</td><td class=l>open</td><td class=part>1/5</td><td class=hit>1/4</td></tr><tr><td class=l>gemma4-26b-a4b-qat</td><td class=l>plan</td><td class=part>3/5</td><td class=hit>1/3</td></tr><tr><td class=l>gemma4-26b-a4b-qat</td><td class=l>checklist</td><td class=part>2/5</td><td class=miss>0/3</td></tr><tr><td class=l>gemma4-31b-qat</td><td class=l>open</td><td class=part>4/5</td><td class=hit>2/4</td></tr><tr><td class=l>gemma4-31b-qat</td><td class=l>plan</td><td class=part>2/5</td><td class=hit>1/4</td></tr><tr><td class=l>gemma4-31b-qat</td><td class=l>checklist</td><td class=part>3/5</td><td class=miss>0/4</td></tr></table>
 
+<h2>Off-target findings: real secondary bugs vs false positives</h2>
+<p>Detection above is only half the story. Every finding a model reports that
+<i>isn't</i> the planted CVE still lands in front of a human (or a downstream
+model) who burns time and tokens triaging it — so a model that floods the queue
+with hallucinations is expensive even when it finds the real bug. But these are
+real in-the-wild OSS files, not synthetic single-bug fixtures, so an off-target
+finding is <b>not automatically</b> a false positive: it may be a genuine,
+never-fixed secondary bug. We judged every off-target finding with the
+code-grounded Opus FP-judge (it reads the <b>pre-patch source</b> via
+<code>git show</code>, never the advisory) and classified each as a real bug, a
+false positive, or undetermined. Distinct sites are deduped (the verdict is a
+property of the code, not which model/arm/trial surfaced it), so this counts how
+many real secondary bugs actually live in each file.</p>
+<table><tr><th class=l>case</th><th>distinct off-target sites</th><th>real secondary bug</th><th>false positive</th><th>undetermined</th><th>mix</th></tr><tr><td class=l>GHSA-w52v-v783-gw97<br><small>CWE-89 &middot; JS</small></td><td>1</td><td class=nd>&mdash;</td><td class=nd>&mdash;</td><td>1</td><td><span class=vbar><span class=vrev style='width:100%'></span></span></td></tr><tr><td class=l>GHSA-j273-m5qq-6825<br><small>CWE-22 &middot; Java</small></td><td>1</td><td class=hit>1</td><td class=nd>&mdash;</td><td>&mdash;</td><td><span class=vbar><span class=vreal style='width:100%'></span></span></td></tr><tr><td class=l>GHSA-f26g-jm89-4g65<br><small>CWE-77 &middot; Rust</small></td><td class=nd>0</td><td class=nd>&mdash;</td><td class=nd>&mdash;</td><td class=nd>&mdash;</td><td class=nd>&mdash;</td></tr><tr><td class=l>CVE-2026-7474<br><small>CWE-22 &middot; Go</small></td><td>7</td><td class=hit>2</td><td class=miss>5</td><td>&mdash;</td><td><span class=vbar><span class=vreal style='width:29%'></span><span class=vfp style='width:71%'></span></span></td></tr><tr><td class=l>GHSA-9f49-8x56-jmjc<br><small>CWE-416 &middot; C</small></td><td>6</td><td class=hit>4</td><td class=miss>2</td><td>&mdash;</td><td><span class=vbar><span class=vreal style='width:67%'></span><span class=vfp style='width:33%'></span></span></td></tr><tr class=hardrow><td class=l>GHSA-mpxh-8fq3-x8mh<br><small>CWE-787 &middot; C</small></td><td>6</td><td class=hit>2</td><td class=miss>4</td><td>&mdash;</td><td><span class=vbar><span class=vreal style='width:33%'></span><span class=vfp style='width:67%'></span></span></td></tr><tr class=hardrow><td class=l>GHSA-x9h5-r9v2-vcww<br><small>CWE-122 &middot; C</small></td><td>1</td><td class=nd>&mdash;</td><td class=miss>1</td><td>&mdash;</td><td><span class=vbar><span class=vfp style='width:100%'></span></span></td></tr><tr class=hardrow><td class=l>GHSA-cc7p-2j3x-x7xf<br><small>CWE-863 &middot; PHP</small></td><td>2</td><td class=hit>1</td><td class=miss>1</td><td>&mdash;</td><td><span class=vbar><span class=vreal style='width:50%'></span><span class=vfp style='width:50%'></span></span></td></tr><tr class=hardrow><td class=l>CVE-2026-5199<br><small>CWE-639 &middot; Go</small></td><td>3</td><td class=hit>1</td><td class=miss>2</td><td>&mdash;</td><td><span class=vbar><span class=vreal style='width:33%'></span><span class=vfp style='width:67%'></span></span></td></tr><tr class=tot><td class=l><b>all cases</b></td><td><b>27</b></td><td class=hit><b>11</b></td><td class=miss><b>15</b></td><td><b>1</b></td><td><span class=vbar><span class=vreal style='width:41%'></span><span class=vfp style='width:56%'></span><span class=vrev style='width:4%'></span></span></td></tr></table>
+<p class=legend><span class=hit>green</span> = judge-confirmed real bug,
+<span class=miss>red</span> = false positive, grey = undetermined. Hard-miss cases
+bold. The on-target CVE hits (31 findings) are not shown here — those are the
+planted bug, already known real.</p>
+
+<h3>Does one model hallucinate more? Off-target rows by model</h3>
+<p>Per-model off-target finding volume split by verdict (row-level, so repeated
+reports of the same site count each time). A lower <b>% real</b> means more of
+that model's noise is hallucination — the cost a human pays per report.</p>
+<table><tr><th class=l>model</th><th>off-target rows</th><th>real</th><th>false positive</th><th>undetermined</th><th>% real</th><th>mix</th></tr><tr><td class=l>gemma4-26b-a4b-qat</td><td>18</td><td class=hit>2</td><td class=miss>13</td><td>3</td><td>11%</td><td><span class=vbar><span class=vreal style='width:11%'></span><span class=vfp style='width:72%'></span><span class=vrev style='width:17%'></span></span></td></tr><tr><td class=l>gemma4-31b-qat</td><td>27</td><td class=hit>16</td><td class=miss>11</td><td>0</td><td>59%</td><td><span class=vbar><span class=vreal style='width:59%'></span><span class=vfp style='width:41%'></span></span></td></tr></table>
+
 <h2>Method &amp; caveats</h2>
 <ul>
 <li>Models: <code>gemma4-31b-qat</code> (dense, 10.20.30.1) and
 <code>gemma4-26b-a4b-qat</code> (MoE, 10.20.30.2), self-hosted llama-server, free,
 QAT-4bit weights.</li>
 <li>15 target files over 9 cases (nomad 2, craft 5, ghost 2, rest 1); a case is a
-hit if any file localizes. 90 runs/model = 15 files × 3 arms × 2 trials.</li>
+hit if any file localizes. 90 runs/model = 15 files &times; 3 arms &times; 2 trials.</li>
 <li>Temperature 0.5 so repeats explore different reasoning paths; llama-server
 <code>seed=-1</code> randomizes per request. A timeout/infra_error reads as
 no-data, never a miss.</li>
 <li>Detection is localization-only (free). Hard-case hits still need the truth
 judge to confirm SAME-bug; this report is the cheap first pass.</li>
+<li>Off-target findings are FP-judged once per distinct site by the code-grounded
+Opus judge (<code>fpjudge_gemma_promptlab.py</code>), which reads the pre-patch
+source and never the advisory; verdicts persist on <code>judge_fp_verdict</code>
+so the report is reproducible from the DB. On-target CVE hits are not judged.</li>
 </ul>
 <p><small>Generated from nelson-gemma-promptlab.db · 2 models ·
-9 cases × 3 arms × 2 trials.</small></p>
+9 cases &times; 3 arms &times; 2 trials.</small></p>
