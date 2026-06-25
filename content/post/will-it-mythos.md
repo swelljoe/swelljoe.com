@@ -4,6 +4,8 @@ date: 2026-05-30T19:28:47-05:00
 draft: false
 ---
 
+Updated on June 17th, 21st, 22nd, and 24th. See notes below.
+
 OK, so Mythos finds really challenging security bugs, right? That's why it's cordoned off from the hoi polloi, to protect the world from such a powerful finder of exploits.
 
 I am skeptical of the reasons given publicly, I suspect it's really just so much more expensive to operate than their current models that they don't want to offer it broadly, yet, given the difficulty they've had growing capacity to keep up with use. But, are they telling the truth about how good it is at finding security vulnerabilities or is it just more hype?
@@ -43,6 +45,8 @@ Updated June 17, 2026 to add GLM 5.2, Kimi K2.7-code, and VibeThinker 3B. No maj
 Updated June 21, 2026 to add Nemotron Ultra 550b a55b and North Mini Code 33b a3b. Both did poorly. In the former case, the bigger version of Nemotron did notably worse than its smaller 120b sibling, for reasons I don't know (but a replication run may flip that, I'll get to it soon). North Mini Code did OK, for a small model, but Qwen 3.6 and Gemma 4 beats it in all cases (Gemma 4 31b appears lower on the chart, but realistically it found 4/9 it just misinterpreted a couple of them). 
 
 Updated June 22, 2026 to add Nemotron 3 Nano Omni and Laguna XS.2, to fill out the family tree of Nemotron and Laguna. Weirdly, both outperform their bigger siblings. I don't have an explanation for that. Nemotron seemingly has an inverse relationship between model size and performance in finding security bugs. That's surprising. More data needed.
+
+Update on June 24, 2026. A new experiment to test whether a repo-scoped prompt would result in something good happening on any of the very hard cases. I ran three models, DeepSeek v4 Pro, MiMo 2.5 Pro, and Gemma 4 31b (all excellent performers in previous benchmarks, and cheap enough to where I wasn't worried about the much higher token usage for a repo-scoped audit). Only DeepSeek and Gemma found one of the bugs, in the control arm of the experiment (three attempts using the standard file-scoped prompt we've used in most of the other benchmarks), and none of them found the specific bug in the repo-scoped trials. MiMo found several other bugs judged real by Opus in the reposcoped test. Note there were two repo-scoped trials for each model, as we'd artificially limited the number of tokens and turns allowed...since we bumped into that, we increaed it to 2 million tokens to let it breathe. They all still failed to find anything. [Click for full results](/html/bench-reposcope.html)
 
 Surprises
 =========
