@@ -1,5 +1,5 @@
 baseURL = "https://swelljoe.com/"
-languageCode = "en-us"
+locale = "en-us"
 title = "I've done some things"
 theme = "paper"
 
