@@ -4,17 +4,15 @@ date: 2026-05-30T19:28:47-05:00
 draft: false
 ---
 
-Updated on June 17th, 21st, 22nd, 24th, 26th, and 27th. See notes below.
+Updated on June 17th, 21st, 22nd, 24th, 26th, and 27th, and July 3rd. See notes below.
 
-OK, so Mythos finds really challenging security bugs, right? That's why it's cordoned off from the hoi polloi, to protect the world from such a powerful finder of exploits.
-
-I am skeptical of the reasons given publicly, I suspect it's really just so much more expensive to operate than their current models that they don't want to offer it broadly, yet, given the difficulty they've had growing capacity to keep up with use. But, are they telling the truth about how good it is at finding security vulnerabilities or is it just more hype?
+OK, so Mythos finds really challenging security bugs, right? That's why it's cordoned off from the hoi polloi, to protect the world from such a powerful finder of exploits. But, many other LLMs can find bugs. Is Mythos uniquely capable?
 
 A while back, I built a tool to automate bug hunting in my own projects called [Nelson](https://github.com/swelljoe/nelson), and I'd already noticed there are surprising differences in the various models and how effectively they identify bugs. But, I wanted hard numbers. So, I (actually mostly Claude) cooked up a benchmark suite that borrows some code from Nelson.
 
-The idea is to gather up bugs that were specifically found by Mythos, as covered by their own [documentation](https://red.anthropic.com/2026/cvd/), find the commit from before the bug was fixed, verify that a top-tier model (Opus, in this case) can identify and understand the bug if pointed right at it, and add that to our corpus for benchmarking whether models going in blind can accurately detect and describe the bug. ([The details of the bugs in the current corpus are here.](https://github.com/swelljoe/nelson/tree/main/cases))
+The idea is to gather up bugs that were specifically found by Mythos, as covered by their [documentation](https://red.anthropic.com/2026/cvd/), find the commit from before the bug was fixed, verify that a top-tier model (Opus, in this case) can identify and understand the bug if pointed right at it, and add that to our corpus for benchmarking whether models going in blind can accurately detect and describe the bug. ([The details of the bugs in the current corpus are here.](https://github.com/swelljoe/nelson/tree/main/cases))
 
-To select which bugs to include in the benchmark, I used Opus (4.7 at the time) to perform the vetting (with some human spot-checking). All of the bugs in the corpus (9, currently) are believed to be _after_ the knowledge cutoff for all models, so they won't have the bug in their memory. All of the bugs can be identified and explained by the judging model when pointed at the bug. So, these are confirmed bugs exactly as they appeared in the wild, and probably as they were when Mythos found them. Over time, I'll evolve the corpus. It may become a more generic CVE-based benchmark, if Anthropic stops bragging about specific bugs.
+To select which bugs to include in the benchmark, I used Opus (4.7 at the time) to perform the vetting (with some human spot-checking). All of the bugs in the corpus (9, currently) were disclosed and fixed _after_ the knowledge cutoff for all models, so they won't have the bug in their training data. All of the bugs can be identified and explained by the judging model when pointed at the bug. So, these are confirmed bugs exactly as they appeared in the wild, and probably as they were when Mythos found them. Over time, I'll evolve the corpus. It may become a more generic CVE-based benchmark, if Anthropic stops bragging about specific bugs.
 
 So, this benchmark has one purpose: To find out whether other models can do what Mythos does, or if Mythos really is uniquely powerful for this task.
 
@@ -52,6 +50,8 @@ Update on June 26, 2026 to add Qwen AgentWorld 35b a3b MoE model. Middling perfo
 
 Update on June 26, 2026 to add Ornith 1.0 (another post-train of Qwen 3.5/3.6 MoE intended for agentic use). Poor performer here, only found the one bug that almost every model found, despite its performance on other benchmarks being excellent for its size. I'll be curious to see the dense model seemingly based on Gemma 4 31b, since that is the best performing small model in the benchmark. It's worth mentioning that it is a implementation that has been trained to create harness code for the specific task, which doesn't suit the limited tools made available in this benchmark (which are read-only). It also performs poorly in a chat without tools, exhibiting an ehthusiasm for hallucination. I'm currently working on a replication of this with full tool access, including bash/Python, which may allow this model to be competitive.
 
+Update on Jul 3, 2026. As expected, Fable switches to Opus 4.8 when asked anything that smells of security work.
+
 Surprises
 =========
 
@@ -72,7 +72,7 @@ June 7 edit: Check out the MoE Gemma 4 result and the note about the "off baseli
 Conclusions
 ===========
 
-I don't know. Will it Mythos? Do regular folk have access to the tools needed to find these hard bugs? I'd say this benchmark answers with a resounding, "Maybe."
+I don't know. Will it Mythos? Do regular folk have access to the tools needed to find these hard bugs? I'd say this benchmark answers with a resounding, "Maybe." Just reading the code and recognizing challenging vulnerabilities that may have survived through multiple security audits is a hard problem. The best human security researchers use a wide variety of tools and generally interact with the code in a variety of ways, rather than just reading it and spotting the bugs.
 
 Mythos maybe really is better than the other current models at finding security bugs, as it found four bugs that no model in this experiment found. But, I'll keep testing. It's possible prompt or tooling or harness changes can enable better results from the current crop of publicly available models.
 
