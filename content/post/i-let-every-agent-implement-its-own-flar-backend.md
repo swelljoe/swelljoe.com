@@ -73,6 +73,6 @@ Grade: B+. It was fast, it understood the risks when prompted to think about the
 So, what'd we learn?
 ====================
 
-Nothing much. Just a fun little experiment that mostly confirmed my priors. Opus 4.8 is among the best models for coding and code security, Gemini Flash 3.5 is OK, I guess, GPT 5.5 (and 5.4) are also Good Enough. Had the assignment for GPT been made simple by the design of Codex it probably would have aced it, too. Opus got to start the game on third base.
+Nothing much. Just a fun little experiment that mostly confirmed my priors. Opus 4.8 is among the best models for coding and coding defensively, Gemini Flash 3.5 is OK, I guess, GPT 5.5 (and 5.4) are also Good Enough. Had the assignment for GPT been made simple by the design of Codex it probably would have aced it, too. Opus got to start the game on third base.
 
 But, maybe more interesting is how good they all are. Even Gemini, for all its risk-taking behavior, made a pretty good tool in an afternoon. With a little guidance from someone who kinda understands the system and lower-level details, I think it cooked up something really nice. Using it keeps me on my toes, in a way I might not need to be with Opus, and, maybe that's not a terrible thing? I don't want to forget how computers work just because a model can sometimes do it for me.
