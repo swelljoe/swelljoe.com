@@ -4,6 +4,8 @@ date: 2026-07-03T17:13:49-05:00
 draft: false
 ---
 
+Updated July 6th with Reasonix.
+
 I recently built [flar](https://github.com/swelljoe/flar), the fast light agent restrictor. It's a tool to [bubblewrap](https://github.com/containers/bubblewrap) an AI agent. It protects against most kinds of prompt injection, as well as many types of supply chain attack that exfiltrate secrets from your system. The agent *and any code it runs* cannot see anything other than the project home and the agent's own config/auth details (which are needed for the agent to work). `flar` also prunes history, so an attacker can't sniff for secrets from other projects (such as pasted credentials, etc.). The blast radius of a successful attack, either prompt injection or supply chain, is limited to the project directory itself and whatever secrets the agent needs to operate. Oh, and network access, of course, though local network access is blocked by default, so your local development databases and apps are safe.
 
 I noticed pretty quickly that even though the basic functionality was the same across all agents, the history was not. All of the various agent CLIs have implemented history and resume a little differently. Claude Code has a directory per-project (this is good! more should do this!), while Antigravity, Copilot, and Codex all have a database type layout where everything goes. The agent itself can filter by project and usually does by default. But, mounting the whole database allows cross-project leakage. Secrets in your chat history about one project can be exfiltrated by a prompt injection or supply chain attack in another project. So, I needed a custom resume backend for each agent.
@@ -69,6 +71,17 @@ No—not yet safe enough for flar’s threat model.
 ```
 
 Grade: B+. It was fast, it understood the risks when prompted to think about the risks. But, it did need to be prompted a couple of times to think about security. Good, concise, code.
+
+Reasonix with DeepSeek V4 Pro
+=============================
+
+[Reasonix](https://reasonix.io/) is an interesting agent, designed specifically to maximize DeepSeek caching. Because DeepSeek is very good at caching (even when using the API in a basic loop, with no extra effort, you'll gets 80-90% cache hit rate), and cached tokens are very cheap, this makes for a very cost-effective combo. I didn't include how much all the others cost to build, in terms of tokens, but now wish I had, because the Reasonix implementation cost exactly a dime. $0.10 for 20 minutes or so of agentic use. Of the 6,250,796 tokens used for the task, 6,007,808 were cache hits.
+
+It did a pretty good job, but, like Claude Code, Reasonix does the reasonable thing and stores project data is a subdirectory rather than intermingled with other projects. So implementation was extremely simple. Reasonix did need to add itself as an available agent, though, as it didn't exist anywhere in the project, so it did a bit more work than Claude. It also behaved weirdly at times. I have no complaints about the implementation, but it spent more time looking around and repeating file reads and file lists than I would expect. It also spent some time looking for an installation of Gorilla, a Go web toolkit. Which, is an unusual thing to look for. `flar` does not use Gorilla and provides no web services that could usefully use Gorilla.
+
+Like Gemini, DeepSeek is a bit wordy with comments, but the code is fine.
+
+Grade: B. DeepSeek+Reasonix gains points for being cheap ($0.10 to implement this feature). Loses points for being weird, I'm still confused by the Gorilla detour. I like Reasonix, though. All of the other agents feel basically the same, like forks of Claude Code (though I know all are indepdendent codebases), Reasonix feels like a different project. It is very upfront about expenses, every result has a price, though it prints it in Chinese Yuan (maybe configurable). And, I like DeepSeek V4 Pro. It's a good model for the price.
 
 So, what'd we learn?
 ====================
