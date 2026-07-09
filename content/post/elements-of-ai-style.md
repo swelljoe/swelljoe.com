@@ -25,3 +25,5 @@ The reason this is on my mind today, is that the new GPT 5.6 developer docs say 
 > Lead with the conclusion. Include the evidence needed to support it, any material caveat, and the next action. Omit secondary detail and repetition.
 
 This assumes the model has a bunch of really important things to say, and I'm just impatient and putting the point up front will solve the problem. GPT is historically the most egregious offender in terms of sychophancy, and middle of the pack on verbosity. Instructing for brevity tended to reduce both, so here's hoping one of the improvements in the new models is a lower tendency to be a babbling suck-up.
+
+I don't have a lot of other instructions in my CLAUDE.md or AGENTS.md, or whatever, because I find models perform best when they're focused on the task rather than satisfying a bunch of mostly unrelated instructions. But, I do have [some rules I follow for myself when coding with agents](/post/quality-commandments/). I do this during the planning stages and bake it into deterministic CI workflows and tests, rather than have it as agent instructions, though.
