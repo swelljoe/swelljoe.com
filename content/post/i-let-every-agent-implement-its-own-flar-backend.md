@@ -4,7 +4,7 @@ date: 2026-07-03T17:13:49-05:00
 draft: false
 ---
 
-Updated July 6th with Reasonix.
+Updated July 6th with Reasonix. Updated July 17th with Kimi Code.
 
 I recently built [flar](https://github.com/swelljoe/flar), the fast light agent restrictor. It's a tool to [bubblewrap](https://github.com/containers/bubblewrap) an AI agent. It protects against most kinds of prompt injection, as well as many types of supply chain attack that exfiltrate secrets from your system. The agent *and any code it runs* cannot see anything other than the project home and the agent's own config/auth details (which are needed for the agent to work). `flar` also prunes history, so an attacker can't sniff for secrets from other projects (such as pasted credentials, etc.). The blast radius of a successful attack, either prompt injection or supply chain, is limited to the project directory itself and whatever secrets the agent needs to operate. Oh, and network access, of course, though local network access is blocked by default, so your local development databases and apps are safe.
 
@@ -82,6 +82,23 @@ It did a pretty good job, but, like Claude Code, Reasonix does the reasonable th
 Like Gemini, DeepSeek is a bit wordy with comments, but the code is fine.
 
 Grade: B. DeepSeek+Reasonix gains points for being cheap ($0.10 to implement this feature). Loses points for being weird, I'm still confused by the Gorilla detour. I like Reasonix, though. All of the other agents feel basically the same, like forks of Claude Code (though I know all are indepdendent codebases), Reasonix feels like a different project. It is very upfront about expenses, every result has a price, though it prints it in Chinese Yuan (maybe configurable). And, I like DeepSeek V4 Pro. It's a good model for the price.
+
+Kimi Code with Kimi K3
+======================
+
+Oh, boy, where to start? Kimi chewed on this problem for a *long* time. A couple of hours, at least. While at least a couple of the agents seemed to know how they work (Claude Code has skills for integrating with Claude Code, for example), Kimi K3 had to figure it out entirely by trial and error. It didn't ask if it could read the source and didn't stop to give me a chance to point it at the source codei, and it didn't search for documentation, so it experimented to find out how `kimi` works. And, it did figure it out, eventually.
+
+The [implementation seems fine](https://github.com/swelljoe/flar/pull/3), a couple of minor mistakes that Copilot code review caught (other models also made minor mistakes or skipped docs, etc., that either I or Copilot caught, so this is not unique to Kimi). What is unique to Kimi is how much it cost. I got a $19 subscription to try it out for a bit, and this tiny project (at least, the project is tiny for other models), consumed 94% of one five hour window, and 19% of my weekly usage! In every other model, the usage for this was pennies, and barely showed up on the graph for the subscription plans (Claude, Copilot, Codex, and Antigravity).
+
+If my back of the envelope math is correct, the copious chewing on the problem and tiny usage limits (at least on the smallest paid plan) makes Kimi K3 very expensive, indeed. A ChatGPT $20 plan will provide a lot more coding time.
+
+The vibes for Kimi K3 are outrageously positive, and so I had high hopes. I'd love an open weights model that's competitive with Fable and Sol. I don't think this is it. I'll give it more projects to chew on, and see if it redeems itself. Or, rather, I'll give it more projects after my usage rolls over and I have room to let it write some code again. But, early impressions are not good.
+
+Admittedly, I probably could have turned down the thinking, it defaulted to max and I didn't think to change it. Didn't think I'd burn all my budget on something so tiny!
+
+Also, Kimi is extremely verbose. Big and unnecessary comments, overly explicative docs.
+
+Grade: C, for being alarmingly inefficient/expensive. But, I might revisit after I try it on a lower thinking level.
 
 So, what'd we learn?
 ====================
