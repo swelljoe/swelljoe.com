@@ -4,7 +4,7 @@ date: 2026-07-03T17:13:49-05:00
 draft: false
 ---
 
-Updated July 6th with Reasonix. Updated July 17th with Kimi Code.
+Updated July 6th with Reasonix, July 17th with Kimi Code, July 22nd with Pool, July 23rd with Qwen Coder and MiMo Code.
 
 I recently built [flar](https://github.com/swelljoe/flar), the fast light agent restrictor. It's a tool to [bubblewrap](https://github.com/containers/bubblewrap) an AI agent. It protects against most kinds of prompt injection, as well as many types of supply chain attack that exfiltrate secrets from your system. The agent *and any code it runs* cannot see anything other than the project home and the agent's own config/auth details (which are needed for the agent to work). `flar` also prunes history, so an attacker can't sniff for secrets from other projects (such as pasted credentials, etc.). The blast radius of a successful attack, either prompt injection or supply chain, is limited to the project directory itself and whatever secrets the agent needs to operate. Oh, and network access, of course, though local network access is blocked by default, so your local development databases and apps are safe.
 
@@ -86,6 +86,8 @@ Grade: B. DeepSeek+Reasonix gains points for being cheap ($0.10 to implement thi
 Kimi Code with Kimi K3
 ======================
 
+Edit July 22: Once the fervor died down, K3 got a lot faster. I think the chewing it did felt like it was really slow because their servers were overwhelmed. It feels a lot nicer today. Leaving the initial impressions here as a record of what the implementation was like, and my still-present concerns about cost (their subscription seems to be extremely expensive compared to even US providers, because the $19 plan is very stingy).
+
 Oh, boy, where to start? Kimi chewed on this problem for a *long* time. A couple of hours, at least. While at least a couple of the agents seemed to know how they work (Claude Code has skills for integrating with Claude Code, for example), Kimi K3 had to figure it out entirely by trial and error. It didn't ask if it could read the source and didn't stop to give me a chance to point it at the source codei, and it didn't search for documentation, so it experimented to find out how `kimi` works. And, it did figure it out, eventually.
 
 The [implementation seems fine](https://github.com/swelljoe/flar/pull/3), a couple of minor mistakes that Copilot code review caught (other models also made minor mistakes or skipped docs, etc., that either I or Copilot caught, so this is not unique to Kimi). What is unique to Kimi is how much it cost. I got a $19 subscription to try it out for a bit, and this tiny project (at least, the project is tiny for other models), consumed 94% of one five hour window, and 19% of my weekly usage! In every other model, the usage for this was pennies, and barely showed up on the graph for the subscription plans (Claude, Copilot, Codex, and Antigravity).
@@ -98,11 +100,42 @@ Admittedly, I probably could have turned down the thinking, it defaulted to max 
 
 Also, Kimi is extremely verbose. Big and unnecessary comments, overly explicative docs.
 
-Grade: C, for being alarmingly inefficient/expensive. But, I might revisit after I try it on a lower thinking level.
+Grade: C+, for being alarmingly inefficient/expensive. But, I might revisit after I try it on a lower thinking level. I upgrade Kimi's grade with a +, because it got faster. I also used it to perform a security audit on the code Gemini made, and it found some good problems. But, it's still almost certainly the most expensive model here, whe comparing subscriptions, even more expensive than Claude with Fable or Codex with GPT 5.6 Sol (which are better models, I'm sorry to the Kimi fans).
+
+Pool with Laguna S 2.1
+======================
+
+This is, by far, the smallest model I've let write code on a project I consider a maintained, real, project that I use every day. I've also never used `pool`, before. But, I figured using Poolside's own agent would give Laguna S 2.1 the best chance of success; I'm not so sure about that now. Laguna seemed to have some confusion with tool use in `pool`. I first tried using a self-hosted 4-bit quantization on the Strix Halo, also a first, I've never used a self-hosted model to write code I planned to keep. But, while the model answered well in the llama.cpp web UI, it simply timed out in `pool`; I could see it producing tokens in the llama server terminal, but nothing good happened in `pool`, I assume it was in some sort of loop. Perhaps it'll be fixed by a GGUF or llama.cpp update soon, and I'll try it again. At 14-20 tps, it's close to fast enough to be usable in an agent, as long as you're not in a hurry.
+
+It misunderstood the assignment with regard to the resume history; it simply gave `flar -m pool` a new resume history, rather than bindmounting or forking a shadow history as the other agents got. That has become a rather tricky part of the project, everyone does history a little differently, so there's a bunch of implementations. If Laguna tried to copy all of them, it wouldn't be surprising that it got a bit tied up over it. So, it had to be directed to tackle it again.
+
+Grade: C. It works, and it's amazing that something I can (theoretically) self-host can understand complicated stuff like this. But, it did need more correction in code review, it was confused by tools more often than maybe any other model I've used for coding, and isn't cheaper than better models like DeepSeek V4 Pro, or even Flash.
+
+Qwen Coder with Qwen 3.8 Preview
+================================
+
+Nice. No comments. Quick, made one small mistake caught in code review. Just a solid model and a solid agent that didn't bring attention to itself in any way, good or bad (which is good). Signing up for a Qwen coding plan was stupid hard, though. Their CAPTCHA doesn't work at all in Firefox, their UI is confusing. But, the $18 plan seems to provide a decent amount of usage. Adding this uses 7.2% of my five hour usage and 1.9% of my weekly usage.
+
+Qwen uses a per-project scoped history, like Claude, which is results in simpler implementation. We like that.
+
+Grade: B-, I think? Dinged for very annoying signup and not supporting Firefox on their website. But, good code, fast, easy to use agent.
+
+MiMo Code with MiMo V2.5 Pro
+============================
+
+![MiMo Code TUI screenshot](/img/mimo-code.png)
+
+What a fun UI! This, like Reasonix, doesn't feel like a fork of Claude Code. It's got a tiled sort of layout, with a collapsible status bar on the right, more mouse interactions than most, lots of colors and emojis and animations (tasteful, mostly, it looks nice, not noisy). Someone really wanted to make a memorable TUI. It's fun to use.
+
+It's also annoying broken, though, when it comes to authentication. On a local session, I was able to click the OAuth link to authenticate in the browser and control switched back to the terminal once done, and that worked well. But, over ssh, completely broken. I had to enter a token instead, and it's very confusing how to add a token; they have multiple kinds of auth, none of them matched the description of what I actually subscribed to. I eventually found it, but suspect I'll have to hunt for awhile in the future, next time I try to authenticate.
+
+I can't figure out how to calculate usage on the MiMo token plan. It's in credits that don't seem to be directly tied to tokens. So, I have no idea if it's expensive or cheap, but since it's so obfuscated I have to assume it's a bad deal. Their tokens are very cheap pay-as-you-go, though.
+
+Grade: B-. Annoying auth in the CLI, decent code with only a few minor mistakes found in code review. Annoying opaque usage accounting on the "token plan". Fast. Fantastic TUI, so much fun to use, I think I might try it with other models. It's really neat.
 
 So, what'd we learn?
 ====================
 
-Nothing much. Just a fun little experiment that mostly confirmed my priors. Opus 4.8 is among the best models for coding and coding defensively, Gemini Flash 3.5 is OK, I guess, GPT 5.5 (and 5.4) are also Good Enough. Had the assignment for GPT been made simple by the design of Codex it probably would have aced it, too. Opus got to start the game on third base.
+Nothing much. Just a fun little experiment that mostly confirmed my priors. Opus 4.8 is among the best models for coding and coding defensively, Gemini Flash 3.5 is OK, I guess, GPT 5.5 (and 5.4) are also Good Enough. Had the assignment for GPT been made simple by the design of Codex it probably would have aced it, too. Opus got to start the game on third base, as did DeepSeek and Qwen.
 
-But, maybe more interesting is how good they all are. Even Gemini, for all its risk-taking behavior, made a pretty good tool in an afternoon. With a little guidance from someone who kinda understands the system and lower-level details, I think it cooked up something really nice. Using it keeps me on my toes, in a way I might not need to be with Opus, and, maybe that's not a terrible thing? I don't want to forget how computers work just because a model can sometimes do it for me.
+But, maybe more interesting is how good they all are (except `pool` and Laguna S 2.1, which struggled enough to be annoying). Even Gemini, for all its risk-taking behavior, made a pretty good tool in an afternoon. With a little guidance from someone who kinda understands the system and lower-level details, I think it cooked up something really nice. Using it keeps me on my toes, in a way I might not need to be with Opus, and, maybe that's not a terrible thing? I don't want to forget how computers work just because a model can sometimes do it for me. Gemini is, I think, the worst of the big models, though, as it writes code with clearly sloppy security practices, and `agy` is the worst of the agents, as it refuses security work, so you can't even get it to audit the sloppy code Gemini just wrote.
