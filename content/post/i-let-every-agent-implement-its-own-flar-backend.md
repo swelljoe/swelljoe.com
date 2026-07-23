@@ -100,7 +100,7 @@ Admittedly, I probably could have turned down the thinking, it defaulted to max 
 
 Also, Kimi is extremely verbose. Big and unnecessary comments, overly explicative docs.
 
-Grade: C+, for being alarmingly inefficient/expensive. But, I might revisit after I try it on a lower thinking level. I upgrade Kimi's grade with a +, because it got faster. I also used it to perform a security audit on the code Gemini made, and it found some good problems. But, it's still almost certainly the most expensive model here, whe comparing subscriptions, even more expensive than Claude with Fable or Codex with GPT 5.6 Sol (which are better models, I'm sorry to the Kimi fans).
+Grade: C+, for being alarmingly inefficient/expensive. But, I might revisit after I try it on a lower thinking level. Edit: I upgraded Kimi's grade with a +, because it got faster. I also used it to perform a security audit on the code Gemini made, and it found some good problems. But, it's still almost certainly the most expensive model here, when comparing subscription plans, even more expensive than Claude with Fable or Codex with GPT 5.6 Sol (which are better models, I'm sorry to the Kimi fans).
 
 Pool with Laguna S 2.1
 ======================
