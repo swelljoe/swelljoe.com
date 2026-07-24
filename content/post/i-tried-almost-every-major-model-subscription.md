@@ -1,5 +1,5 @@
 ---
-title: "I Tried Almost Every Major Model Subscription So You Don't Have To"
+title: "I Tried (Almost) Every Major Model Subscription So You Don't Have To"
 date: 2026-07-23T18:16:48-05:00
 draft: false
 ---
@@ -34,6 +34,8 @@ The Long Answer
 ===============
 
 Everybody's talking about Kimi K3, the Fable killer. Well...
+
+![Image of Kimi subscription usage, showing current usage limit at 100% and weekly limit at 72%](img/kimi-usage-joke.png)
 
 Kimi K3 is unreasonably stingy in their coding plan and ends up being unreasonably expensive at API rates, when you inevitably run out of plan usage. In my testing, one tiny task chewed up the whole five-hour limit and a third of the weekly limit. Kimi's coding plan is the worst deal going right now, much worse than Anthropic's pricey plans. For the benchmark run that barely touched any of the other plans I tested (except Anthropic), I interrupted it after $100 of "extra usage" when I realized it would cost over $500 for the K3 run alone (Claude Opus 4.8 cost one five-hour limit and an extra ~$50). Kimi is also overwhelmed currently, so K3 is running very slow, and there are several hours out of the day where you get frequent 429 errors. I don't have a good feel for whether K3 is as good as the benchmarks promise. My gut is telling me "no". I've been told the Kimi plans in China are a better deal, but there's literally no reason for a western user to choose Kimi K3 at this time. It's just a really bad deal. I'll be canceling this plan.
 
