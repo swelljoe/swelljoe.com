@@ -1,5 +1,5 @@
 ---
-title: "Will It Mythos 2 the Embuggening"
+title: "Will It Mythos 2: the Embuggening"
 date: 2026-07-03T02:34:56-05:00
 draft: false
 ---
