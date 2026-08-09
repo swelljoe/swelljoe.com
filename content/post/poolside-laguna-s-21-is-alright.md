@@ -1,5 +1,5 @@
 ---
-title: "Poolside Laguna S 21 Is Alright"
+title: "Poolside Laguna S 2.1 Is Alright"
 date: 2026-07-23T22:37:20-05:00
 draft: false
 ---
