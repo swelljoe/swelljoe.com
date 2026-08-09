@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nelson Benchmark Leaderboard</title>
+<style>
+:root{
+  --bg:#ffffff; --surface:#fafafa; --surface-2:#f1f2f4; --border:#dcdee2;
+  --text:#1a1a1a; --text-muted:#646a73;
+  --accent:#b5530a; --blue:#2563a8; --cyan:#0f7b8a;
+  --good:#1c6b2c; --amber:#8a6d00; --bad:#9b1c1c; --yellow:#8a6d00;
+  --good-bg:#dff5e1; --amber-bg:#fff6da; --bad-bg:#fde8e8; --muted-bg:#eef0f2;
+  --callout-bg:#fff8f0; --callout-border:#f0c890; --callout-edge:#e08a2b;
+  --hover:rgba(37,99,168,.06); --shadow:0 1px 2px rgba(0,0,0,.06);
+  /* back-compat aliases for pre-unification token names (resolve per-theme) */
+  --red:var(--bad); --green:var(--good); --surface2:var(--surface-2); --orange:#c2410c;
+}
+:root[data-theme="dark"]{
+  --bg:#15171c; --surface:#1b1e24; --surface-2:#23272f; --border:#2c2f36;
+  --text:#e8e8ea; --text-muted:#9aa0aa;
+  --accent:#d98a4a; --blue:#6ea8d8; --cyan:#56cfe1;
+  --good:#5fbf7f; --amber:#d6a24a; --bad:#d2685c; --yellow:#d6a24a;
+  --good-bg:rgba(95,191,127,.15); --amber-bg:rgba(214,162,74,.15);
+  --bad-bg:rgba(210,104,92,.15); --muted-bg:rgba(154,160,170,.12);
+  --callout-bg:#241d14; --callout-border:#5a4424; --callout-edge:#d6a24a;
+  --hover:rgba(110,168,216,.08); --shadow:0 1px 2px rgba(0,0,0,.35);
+  --orange:#e0934a;
+}
+
+*{box-sizing:border-box}
+html{color-scheme:light dark}
+body{
+  font:16px/1.6 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  background:var(--bg); color:var(--text);
+  margin:0 auto; padding:2.2rem 1.3rem; max-width:1100px;
+}
+h1{font-size:1.7rem; line-height:1.25; margin:0 0 .3rem; color:var(--text)}
+h2{font-size:1.25rem; margin:2rem 0 .7rem; color:var(--blue);
+   border-bottom:1px solid var(--border); padding-bottom:.3rem}
+h3{font-size:1.05rem; margin:1.2rem 0 .5rem; color:var(--cyan)}
+p{margin:.55rem 0}
+a{color:var(--blue); text-decoration:none}
+a:hover{text-decoration:underline}
+.sub,.subtitle,.lede,.intro{color:var(--text-muted); margin:.15rem 0 1.2rem}
+.muted{color:var(--text-muted); font-size:.82rem}
+small{color:var(--text-muted)}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  font-size:.82rem}
+.big{font-size:1.1rem; font-weight:700}
+b,strong{color:var(--text)}
+
+/* tables: clean ruled rows in a rounded surface */
+table{border-collapse:collapse; width:100%; margin:.85rem 0; font-size:.9rem;
+  background:var(--surface); border:1px solid var(--border); border-radius:8px;
+  overflow:hidden}
+th,td{padding:.45rem .65rem; text-align:left; border-bottom:1px solid var(--border)}
+th{background:var(--surface-2); color:var(--text-muted); font-weight:600;
+  font-size:.74rem; text-transform:uppercase; letter-spacing:.03em}
+tr:last-child td{border-bottom:none}
+tbody tr:hover{background:var(--hover)}
+td.num,th.num{text-align:right; font-variant-numeric:tabular-nums}
+td.l,th.l{text-align:left}
+td.c,th.c{text-align:center}
+/* opt-in spreadsheet grid (bordered + centered cells) for dense matrices */
+table.grid th,table.grid td{border:1px solid var(--border); text-align:center}
+table.grid td.l,table.grid th.l{text-align:left}
+
+/* filled status cells (experiment-report vocabulary); centered for matrix legibility */
+.hit{background:var(--good-bg); color:var(--good); font-weight:600; text-align:center}
+.miss{background:var(--bad-bg); color:var(--bad); text-align:center}
+.part{background:var(--amber-bg); color:var(--amber); font-weight:600;
+  text-align:center}
+.nd{background:var(--muted-bg); color:var(--text-muted); text-align:center}
+.good{color:var(--good)} .amber{color:var(--amber)} .bad{color:var(--bad)}
+
+/* badges + tags */
+.badge{display:inline-block; padding:.12rem .5rem; border-radius:999px;
+  font-size:.74rem; font-weight:600;
+  background:var(--surface-2); color:var(--text-muted)}
+.badge-high,.badge-confirmed,.badge-error{background:var(--bad-bg); color:var(--bad)}
+.badge-medium,.badge-needs_review,.badge-running,.badge-pending{
+  background:var(--amber-bg); color:var(--amber)}
+.badge-low,.badge-unreviewed{background:var(--muted-bg); color:var(--text-muted)}
+.badge-false_positive,.badge-resolved,.badge-complete{
+  background:var(--good-bg); color:var(--good)}
+.tag{display:inline-block; font-size:.7rem; padding:.05rem .45rem; border-radius:999px;
+  background:var(--surface-2); color:var(--text-muted); margin-left:.4rem}
+.tag.hard{background:var(--bad-bg); color:var(--bad)}
+
+/* cards */
+.card{background:var(--surface); border:1px solid var(--border); border-radius:8px;
+  padding:.9rem 1.1rem; margin:.6rem 0}
+.cards{display:flex; gap:.9rem; flex-wrap:wrap; margin:.6rem 0}
+.card .v,.cards .v{font-size:1.6rem; font-weight:700}
+.card .l,.cards .l{color:var(--text-muted); font-size:.78rem}
+.stats-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr));
+  gap:.75rem; margin:.8rem 0}
+.stat-card{background:var(--surface); border:1px solid var(--border); border-radius:8px;
+  padding:.8rem; text-align:center}
+.stat-value{font-size:1.7rem; font-weight:700}
+.stat-label{font-size:.78rem; color:var(--text-muted)}
+
+/* callout */
+.callout{background:var(--callout-bg); border:1px solid var(--callout-border);
+  border-left:5px solid var(--callout-edge); border-radius:8px;
+  padding:.9rem 1.1rem; margin:1.1rem 0}
+.callout b{color:var(--callout-edge)}
+
+/* code */
+code{background:var(--surface-2); padding:1px 5px; border-radius:4px; font-size:.85em;
+  font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+.code-block{background:var(--surface-2); padding:.6rem .8rem; margin:.5rem 0;
+  border:1px solid var(--border); border-radius:6px; overflow-x:auto;
+  white-space:pre-wrap; font-size:.82rem;
+  font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+
+/* findings (scan report) */
+.finding{border-left:3px solid var(--border); background:var(--surface);
+  border-radius:6px; padding:.8rem 1rem; margin:.6rem 0}
+.finding-high{border-left-color:var(--bad)}
+.finding-medium{border-left-color:var(--amber)}
+.finding-low{border-left-color:var(--text-muted)}
+.finding-header{display:flex; gap:.7rem; align-items:center; flex-wrap:wrap}
+.review-box{margin-top:.5rem; padding:.5rem .75rem; background:var(--surface-2);
+  border-radius:6px; font-size:.88rem}
+.file-group{margin:1rem 0}
+.file-name{font-family:ui-monospace,monospace; font-size:.9rem; color:var(--cyan);
+  padding:.5rem; background:var(--surface-2); border-radius:6px 6px 0 0}
+
+footer{margin-top:2.2rem; padding-top:1rem; border-top:1px solid var(--border);
+  color:var(--text-muted); font-size:.8rem}
+
+/* theme toggle */
+.theme-toggle{position:fixed; top:.7rem; right:.7rem; z-index:100;
+  background:var(--surface); color:var(--text-muted); border:1px solid var(--border);
+  border-radius:999px; padding:.3rem .75rem; font:inherit; font-size:.8rem;
+  cursor:pointer; box-shadow:var(--shadow)}
+.theme-toggle:hover{color:var(--text); border-color:var(--text-muted)}
+@media print{.theme-toggle{display:none}}
+.lead-rank { color: var(--text-muted); text-align: right; width: 2rem; }
+.num { text-align: right; font-variant-numeric: tabular-nums; }
+.frontier-star { color: var(--green); font-weight: 700; }
+.trials-note { color: var(--text-muted); font-size: 0.72em; font-weight: 400; }
+.muted { color: var(--text-muted); }
+.pareto-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+  gap: 1rem; margin: 0.75rem 0;
+}
+.pareto-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 6px; padding: 0.75rem;
+}
+.pareto-card h3 { margin-top: 0; }
+.scatter-pt { fill: var(--blue); }
+.scatter-pt-frontier { fill: var(--green); }
+.scatter-label { fill: var(--text-muted); font-size: 11px; font-family: monospace; }
+.scatter-axis { stroke: var(--border); stroke-width: 1; }
+.scatter-tick { fill: var(--text-muted); font-size: 10px; }
+.scatter-frontier-line { stroke: var(--green); stroke-width: 1.5; fill: none;
+  stroke-dasharray: 4 3; opacity: 0.7; }
+.matrix td, .matrix th { text-align: center; }
+.matrix th.comp, .matrix td.comp { text-align: left; font-family: monospace; }
+.cell-hit { color: var(--green); font-weight: 700; }
+.cell-partial { color: var(--amber); font-weight: 700; }
+.cell-fp { color: var(--red); font-weight: 700; }
+.cell-miss { color: var(--text-muted); }
+.cell-jerr { color: var(--yellow); }
+.cell-refu { color: var(--cyan); font-style: italic; }
+.cell-excl { color: var(--orange); }
+.cell-none { color: var(--border); }
+.token-bar { fill: var(--blue); opacity: 0.85; }
+</style><script>(function(){try{var t=localStorage.getItem('nelson-theme');if(t!=='light'&&t!=='dark'){t=window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';}document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+</head>
+<body><button class="theme-toggle" type="button" onclick="(function(){var r=document.documentElement;var t=r.getAttribute('data-theme')==='dark'?'light':'dark';r.setAttribute('data-theme',t);try{localStorage.setItem('nelson-theme',t);}catch(e){}})()">◐ theme</button>
+<h1>Nelson Benchmark Leaderboard</h1>
+<p class="subtitle">16 competitors — 95 case hits across 351 audited cases</p>
+
+<div class="stats-grid">
+<div class="stat-card"><div class="stat-value" style="color: var(--blue)">16</div><div class="stat-label">Competitors</div></div>
+<div class="stat-card"><div class="stat-value" style="color: var(--cyan)">351</div><div class="stat-label">Cases audited</div></div>
+<div class="stat-card"><div class="stat-value" style="color: var(--green)">95</div><div class="stat-label">Case hits</div></div>
+<div class="stat-card"><div class="stat-value" style="color: var(--yellow)">$560.73</div><div class="stat-label">Competitor spend</div></div>
+<div class="stat-card"><div class="stat-value" style="color: var(--text-muted)">$240.14</div><div class="stat-label">Judge spend</div></div>
+</div>
+<h2>Leaderboard</h2>
+<table><tr><th class="lead-rank">#</th><th>Competitor</th><th>Size</th><th class="num" title="De-duped multipass detection: distinct cases HIT in any --repeat pass / eligible cases. Repeated passes are pooled to distinct cases, never triple-counted.">Detect</th><th class="num" title="Informational only (not the ranking key): hits plus half credit for partials — (hits + 0.5*partials) / eligible.">det+&frac12;</th><th class="num" title="Distinct cases hit in any pass / eligible (hits + partials + genuine misses). Hover for the per-trial spread.">Hits/Elig</th><th class="num" title="Distinct cases localized to the right spot (within tolerance) but judged a different bug — right place, wrong bug. A non-hit, but still points a human at the line. De-duped across passes.">Partial</th><th class="num" title="Absolute count of distinct confirmed false positives, de-duped across passes — the same bogus finding restated in several passes counts once. The human-time-wasted number.">False pos</th><th class="num">Precision</th><th class="num">FP/case</th><th class="num" title="Confirmed real bugs the model found that are not the known target CVE — credited capability, but does not count toward detection. De-duped across passes.">Other real</th><th class="num">Cost/case</th><th class="num">Latency</th><th class="num" title="Mean total tokens (prompt + completion) reported per audited case — only as honest as the provider's usage metering (see note below the chart)">Tokens/case</th><th class="num">Cases</th></tr>
+<tr><td class="lead-rank">1</td><td>gpt-5.6-sol/codex <span class="frontier-star" title="On a Pareto frontier">★</span></td><td>large</td><td class="num">68%<div class="trials-note">3 passes, de-duped</div></td><td class="num">70%</td><td class="num"><span title="per-trial 50%&ndash;59%, spread 9%">15/22</span></td><td class="num cell-partial">1</td><td class="num cell-fp">15</td><td class="num">73%</td><td class="num">0.68</td><td class="num">18</td><td class="num">$0.00</td><td class="num">352s</td><td class="num">0</td><td class="num">22</td></tr>
+<tr><td class="lead-rank">2</td><td>gpt-5.6-sol/api</td><td>large</td><td class="num">41%<div class="trials-note">3 passes, de-duped</div></td><td class="num">45%</td><td class="num"><span title="per-trial 23%&ndash;32%, spread 9%">9/22</span></td><td class="num cell-partial">2</td><td class="num cell-fp">24</td><td class="num">69%</td><td class="num">1.09</td><td class="num">42</td><td class="num">$8.02</td><td class="num">584s</td><td class="num">1.5M</td><td class="num">22</td></tr>
+<tr><td class="lead-rank">3</td><td>opus-4.8/api <span class="frontier-star" title="On a Pareto frontier">★</span></td><td>large</td><td class="num">36%<div class="trials-note">3 passes, de-duped</div></td><td class="num">36%</td><td class="num"><span title="per-trial 9%&ndash;27%, spread 18%">8/22</span></td><td class="num cell-partial">—</td><td class="num cell-fp">—</td><td class="num">100%</td><td class="num">0.00</td><td class="num">13</td><td class="num">$6.43</td><td class="num">272s</td><td class="num">1.2M</td><td class="num">22</td></tr>
+<tr><td class="lead-rank">4</td><td>gpt-5.5</td><td>large</td><td class="num">36%<div class="trials-note">3 passes, de-duped</div></td><td class="num">41%</td><td class="num"><span title="per-trial 18%&ndash;32%, spread 14%">8/22</span></td><td class="num cell-partial">2</td><td class="num cell-fp">23</td><td class="num">67%</td><td class="num">1.05</td><td class="num">34</td><td class="num">$3.77</td><td class="num">504s</td><td class="num">2.4M</td><td class="num">22</td></tr>
+<tr><td class="lead-rank">5</td><td>mimo-v2.5-pro</td><td>large</td><td class="num">35%<div class="trials-note">3 passes, de-duped</div></td><td class="num">38%</td><td class="num"><span title="per-trial 16%&ndash;19%, spread 3%">7/20</span></td><td class="num cell-partial">1</td><td class="num cell-fp">3</td><td class="num">91%</td><td class="num">0.14</td><td class="num">22</td><td class="num">$0.44</td><td class="num">1520s</td><td class="num">2.2M</td><td class="num">22</td></tr>
+<tr><td class="lead-rank">6</td><td>opus-4.8/claude-code<sup style="color: var(--yellow)" title="Partial coverage: audited 21 of 22 cases — see note below">&dagger;</sup></td><td>large</td><td class="num">32%<div class="trials-note">3 passes, de-duped</div><sup style="color: var(--yellow)" title="Partial coverage: audited 21 of 22 cases — see note below">&dagger;</sup></td><td class="num">34%</td><td class="num"><span title="per-trial 17%&ndash;22%, spread 6%">6/19</span></td><td class="num cell-partial">1</td><td class="num cell-fp">3</td><td class="num">84%</td><td class="num">0.14</td><td class="num">9</td><td class="num">$2.47</td><td class="num">395s</td><td class="num">1.6M</td><td class="num">21</td></tr>
+<tr><td class="lead-rank">7</td><td>glm-5.2</td><td>large</td><td class="num">30%<div class="trials-note">3 passes, de-duped</div></td><td class="num">32%</td><td class="num"><span title="per-trial 14%&ndash;30%, spread 16%">6/20</span></td><td class="num cell-partial">1</td><td class="num cell-fp">2</td><td class="num">92%</td><td class="num">0.09</td><td class="num">16</td><td class="num">$0.96</td><td class="num">941s</td><td class="num">1.5M</td><td class="num">22</td></tr>
+<tr><td class="lead-rank">8</td><td>deepseek-v4-pro</td><td>large</td><td class="num">27%<div class="trials-note">3 passes, de-duped</div></td><td class="num">34%</td><td class="num"><span title="per-trial 10%&ndash;23%, spread 13%">6/22</span></td><td class="num cell-partial">3</td><td class="num cell-fp">15</td><td class="num">62%</td><td class="num">0.68</td><td class="num">16</td><td class="num">$0.99</td><td class="num">738s</td><td class="num">2.4M</td><td class="num">22</td></tr>
+<tr><td class="lead-rank">9</td><td>gemma4-31b</td><td>small</td><td class="num">24%<div class="trials-note">3 passes, de-duped</div></td><td class="num">29%</td><td class="num"><span title="per-trial 10%&ndash;15%, spread 5%">5/21</span></td><td class="num cell-partial">2</td><td class="num cell-fp">12</td><td class="num">67%</td><td class="num">0.55</td><td class="num">18</td><td class="num">$0.00</td><td class="num">3454s</td><td class="num">934k</td><td class="num">22</td></tr>
+<tr><td class="lead-rank">10</td><td>qwen3.6-27b</td><td>small</td><td class="num">23%<div class="trials-note">3 passes, de-duped</div></td><td class="num">30%</td><td class="num"><span title="per-trial 7%&ndash;24%, spread 17%">5/22</span></td><td class="num cell-partial">3</td><td class="num cell-fp">13</td><td class="num">59%</td><td class="num">0.59</td><td class="num">13</td><td class="num">$0.00</td><td class="num">2804s</td><td class="num">1.8M</td><td class="num">22</td></tr>
+<tr><td class="lead-rank">11</td><td>minimax-m3</td><td>large</td><td class="num">23%<div class="trials-note">3 passes, de-duped</div></td><td class="num">25%</td><td class="num"><span title="per-trial 14%&ndash;18%, spread 5%">5/22</span></td><td class="num cell-partial">1</td><td class="num cell-fp">11</td><td class="num">59%</td><td class="num">0.50</td><td class="num">10</td><td class="num">$0.71</td><td class="num">839s</td><td class="num">2.2M</td><td class="num">22</td></tr>
+<tr><td class="lead-rank">12</td><td>qwen3.7-max</td><td>large</td><td class="num">20%<div class="trials-note">3 passes, de-duped</div></td><td class="num">25%</td><td class="num"><span title="per-trial 14%&ndash;15%, spread 1%">4/20</span></td><td class="num cell-partial">2</td><td class="num cell-fp">9</td><td class="num">69%</td><td class="num">0.41</td><td class="num">14</td><td class="num">$1.22</td><td class="num">1027s</td><td class="num">1.8M</td><td class="num">22</td></tr>
+<tr><td class="lead-rank">13</td><td>gemma4-12b-think</td><td>small</td><td class="num">18%<div class="trials-note">3 passes, de-duped</div></td><td class="num">25%</td><td class="num"><span title="per-trial 5%&ndash;10%, spread 5%">4/22</span></td><td class="num cell-partial">3</td><td class="num cell-fp">26</td><td class="num">28%</td><td class="num">1.18</td><td class="num">6</td><td class="num">$0.00</td><td class="num">2203s</td><td class="num">1.3M</td><td class="num">22</td></tr>
+<tr><td class="lead-rank">14</td><td>deepseek-v4-flash</td><td>medium</td><td class="num">16%<div class="trials-note">3 passes, de-duped</div></td><td class="num">18%</td><td class="num"><span title="per-trial 9%&ndash;16%, spread 7%">3/19</span></td><td class="num cell-partial">1</td><td class="num cell-fp">7</td><td class="num">56%</td><td class="num">0.32</td><td class="num">3</td><td class="num">$0.36</td><td class="num">453s</td><td class="num">2.5M</td><td class="num">22</td></tr>
+<tr><td class="lead-rank">15</td><td>laguna-s-2.1</td><td>small</td><td class="num">9%<div class="trials-note">3 passes, de-duped</div></td><td class="num">9%</td><td class="num"><span title="per-trial 0%&ndash;9%, spread 9%">2/22</span></td><td class="num cell-partial">—</td><td class="num cell-fp">7</td><td class="num">36%</td><td class="num">0.32</td><td class="num">2</td><td class="num">$0.23</td><td class="num">1050s</td><td class="num">2.2M</td><td class="num">22</td></tr>
+<tr><td class="lead-rank">16</td><td>gemma4-12b-nothink <span class="frontier-star" title="On a Pareto frontier">★</span></td><td>small</td><td class="num">9%<div class="trials-note">3 passes, de-duped</div></td><td class="num">9%</td><td class="num"><span title="per-trial 5%&ndash;9%, spread 5%">2/22</span></td><td class="num cell-partial">—</td><td class="num cell-fp">31</td><td class="num">16%</td><td class="num">1.41</td><td class="num">3</td><td class="num">$0.00</td><td class="num">101s</td><td class="num">261k</td><td class="num">22</td></tr>
+</table>
+<p class="muted"><strong>Every count below is de-duped across the <code>--repeat</code> passes</strong> — the same bug (or the same false positive) reported in several passes is counted once, never once per pass. This is the point of multipass scanning: more bites at the apple to find a bug, without inflating the tally. <strong>Detect</strong> = distinct cases HIT in <em>any</em> pass / eligible cases (hits + partials + genuine misses); undetermined, refused and auth/infra-excluded cases are out of the denominator. <strong>Partial</strong> = distinct cases localized to the right spot but judged a <em>different</em> bug — right place, wrong bug; an eligible non-hit that never moves Detect or the ranking, but still points a human at the vulnerable line. <strong>False pos</strong> = absolute distinct confirmed false positives — the human-time-wasted number, to weigh against the bugs found. Precision = true / (true + false positives). Other real = confirmed real bugs that are not the planted target CVE (extra capability, not counted as detection). det+&frac12; = (hits + 0.5&middot;partials) / eligible, informational. Cost/latency are the competitor's own spend per audited case. ★ = on a Pareto frontier below.</p>
+<p class="muted">This run used repeated trials (<code>--repeat</code>). Detect and every finding count are the <strong>de-duped union across passes</strong> (best-of-N pooled), not a per-trial mean — hover a Hits/Elig cell for the per-trial spread. In the per-case matrix, a HIT marked <code>n/N</code> was found in only n of N trials (flaky). See <code>bench noise</code> for the full per-trial breakdown.</p>
+<p class="muted">&dagger; Partial coverage: this competitor completed fewer than the full 22 cases (see the Cases column). Its detection rate is therefore based on fewer audited cases and is not directly rank-comparable with full-corpus competitors — read it alongside the Cases count, not the rank.</p>
+<h2>Pareto frontier</h2>
+<div class="pareto-grid">
+<div class="pareto-card"><h3>Quality vs cost / case</h3>
+<svg viewBox="0 0 540 340" width="100%" role="img" aria-label="quality vs cost / case"><line class="scatter-axis" x1="58" y1="16" x2="58" y2="294"/><line class="scatter-axis" x1="58" y1="294" x2="384" y2="294"/><line class="scatter-axis" x1="54" y1="294.0" x2="58" y2="294.0"/><text class="scatter-tick" x="50" y="297.0" text-anchor="end">0.0</text><line class="scatter-axis" x1="54" y1="155.0" x2="58" y2="155.0"/><text class="scatter-tick" x="50" y="158.0" text-anchor="end">0.5</text><line class="scatter-axis" x1="54" y1="16.0" x2="58" y2="16.0"/><text class="scatter-tick" x="50" y="19.0" text-anchor="end">1.0</text><text class="scatter-tick" x="14" y="155.0" transform="rotate(-90 14 155.0)" text-anchor="middle">quality (det x prec)</text><line class="scatter-axis" x1="58.0" y1="294" x2="58.0" y2="298"/><text class="scatter-tick" x="58.0" y="310" text-anchor="middle">$0.00</text><line class="scatter-axis" x1="384.0" y1="294" x2="384.0" y2="298"/><text class="scatter-tick" x="384.0" y="310" text-anchor="middle">$8.02</text><text class="scatter-tick" x="221.0" y="334" text-anchor="middle">cost / case (lower is better →)</text><circle class="scatter-pt-frontier" cx="58.0" cy="156.1" r="5"/><text class="scatter-label" x="66.0" y="159.1">gpt-5.6-sol/codex</text><circle class="scatter-pt" cx="384.0" cy="215.3" r="4"/><text class="scatter-label" x="392.0" y="218.3">gpt-5.6-sol/api</text><circle class="scatter-pt" cx="319.4" cy="192.9" r="4"/><text class="scatter-label" x="327.4" y="195.9">opus-4.8/api</text><circle class="scatter-pt" cx="211.2" cy="226.6" r="4"/><text class="scatter-label" x="219.2" y="229.6">gpt-5.5</text><circle class="scatter-pt" cx="75.9" cy="205.3" r="4"/><text class="scatter-label" x="83.9" y="208.3">mimo-v2.5-pro</text><circle class="scatter-pt" cx="158.5" cy="220.1" r="4"/><text class="scatter-label" x="166.5" y="223.1">opus-4.8/claude-code</text><circle class="scatter-pt" cx="96.9" cy="217.3" r="4"/><text class="scatter-label" x="104.9" y="220.3">glm-5.2</text><circle class="scatter-pt" cx="98.3" cy="247.3" r="4"/><text class="scatter-label" x="106.3" y="250.3">deepseek-v4-pro</text><circle class="scatter-pt" cx="58.0" cy="249.9" r="4"/><text class="scatter-label" x="66.0" y="252.9">gemma4-31b</text><circle class="scatter-pt" cx="58.0" cy="256.5" r="4"/><text class="scatter-label" x="66.0" y="259.5">qwen3.6-27b</text><circle class="scatter-pt" cx="86.9" cy="256.6" r="4"/><text class="scatter-label" x="94.9" y="259.6">minimax-m3</text><circle class="scatter-pt" cx="107.8" cy="255.7" r="4"/><text class="scatter-label" x="115.8" y="258.7">qwen3.7-max</text><circle class="scatter-pt" cx="58.0" cy="280.0" r="4"/><text class="scatter-label" x="66.0" y="283.0">gemma4-12b-think</text><circle class="scatter-pt" cx="72.6" cy="269.3" r="4"/><text class="scatter-label" x="80.6" y="272.3">deepseek-v4-flash</text><circle class="scatter-pt" cx="67.2" cy="284.8" r="4"/><text class="scatter-label" x="75.2" y="287.8">laguna-s-2.1</text><circle class="scatter-pt" cx="58.0" cy="289.9" r="4"/><text class="scatter-label" x="66.0" y="292.9">gemma4-12b-nothink</text></svg>
+</div>
+<div class="pareto-card"><h3>Quality vs latency / case</h3>
+<svg viewBox="0 0 540 340" width="100%" role="img" aria-label="quality vs latency / case"><line class="scatter-axis" x1="58" y1="16" x2="58" y2="294"/><line class="scatter-axis" x1="58" y1="294" x2="384" y2="294"/><line class="scatter-axis" x1="54" y1="294.0" x2="58" y2="294.0"/><text class="scatter-tick" x="50" y="297.0" text-anchor="end">0.0</text><line class="scatter-axis" x1="54" y1="155.0" x2="58" y2="155.0"/><text class="scatter-tick" x="50" y="158.0" text-anchor="end">0.5</text><line class="scatter-axis" x1="54" y1="16.0" x2="58" y2="16.0"/><text class="scatter-tick" x="50" y="19.0" text-anchor="end">1.0</text><text class="scatter-tick" x="14" y="155.0" transform="rotate(-90 14 155.0)" text-anchor="middle">quality (det x prec)</text><line class="scatter-axis" x1="58.0" y1="294" x2="58.0" y2="298"/><text class="scatter-tick" x="58.0" y="310" text-anchor="middle">101s</text><line class="scatter-axis" x1="384.0" y1="294" x2="384.0" y2="298"/><text class="scatter-tick" x="384.0" y="310" text-anchor="middle">3454s</text><text class="scatter-tick" x="221.0" y="334" text-anchor="middle">latency / case (lower is better →)</text><polyline class="scatter-frontier-line" points="58.0,289.9 74.6,192.9 82.4,156.1"/><circle class="scatter-pt-frontier" cx="82.4" cy="156.1" r="5"/><text class="scatter-label" x="90.4" y="159.1">gpt-5.6-sol/codex</text><circle class="scatter-pt" cx="104.9" cy="215.3" r="4"/><text class="scatter-label" x="112.9" y="218.3">gpt-5.6-sol/api</text><circle class="scatter-pt-frontier" cx="74.6" cy="192.9" r="5"/><text class="scatter-label" x="82.6" y="195.9">opus-4.8/api</text><circle class="scatter-pt" cx="97.1" cy="226.6" r="4"/><text class="scatter-label" x="105.1" y="229.6">gpt-5.5</text><circle class="scatter-pt" cx="196.0" cy="205.3" r="4"/><text class="scatter-label" x="204.0" y="208.3">mimo-v2.5-pro</text><circle class="scatter-pt" cx="86.6" cy="220.1" r="4"/><text class="scatter-label" x="94.6" y="223.1">opus-4.8/claude-code</text><circle class="scatter-pt" cx="139.6" cy="217.3" r="4"/><text class="scatter-label" x="147.6" y="220.3">glm-5.2</text><circle class="scatter-pt" cx="119.9" cy="247.3" r="4"/><text class="scatter-label" x="127.9" y="250.3">deepseek-v4-pro</text><circle class="scatter-pt" cx="384.0" cy="249.9" r="4"/><text class="scatter-label" x="392.0" y="252.9">gemma4-31b</text><circle class="scatter-pt" cx="320.8" cy="256.5" r="4"/><text class="scatter-label" x="328.8" y="259.5">qwen3.6-27b</text><circle class="scatter-pt" cx="129.7" cy="256.6" r="4"/><text class="scatter-label" x="137.7" y="259.6">minimax-m3</text><circle class="scatter-pt" cx="148.0" cy="255.7" r="4"/><text class="scatter-label" x="156.0" y="258.7">qwen3.7-max</text><circle class="scatter-pt" cx="262.4" cy="280.0" r="4"/><text class="scatter-label" x="270.4" y="283.0">gemma4-12b-think</text><circle class="scatter-pt" cx="92.2" cy="269.3" r="4"/><text class="scatter-label" x="100.2" y="272.3">deepseek-v4-flash</text><circle class="scatter-pt" cx="150.3" cy="284.8" r="4"/><text class="scatter-label" x="158.3" y="287.8">laguna-s-2.1</text><circle class="scatter-pt-frontier" cx="58.0" cy="289.9" r="5"/><text class="scatter-label" x="66.0" y="292.9">gemma4-12b-nothink</text></svg>
+</div></div>
+<p class="muted">Quality = detection rate x precision (precision treated as 1.0 when a competitor reported no scorable findings). Green points are non-dominated — no other competitor is at least as good on quality while also cheaper/faster. Size is shown in the table; it is categorical, so it is not used as a numeric Pareto axis.</p>
+<h2>Tokens &amp; time per case</h2>
+<svg viewBox="0 0 720 452" width="100%" role="img" aria-label="tokens per case per competitor"><text class="scatter-label" x="194" y="26.0" text-anchor="end">deepseek-v4-flash</text><rect class="token-bar" x="206" y="14.0" width="444.0" height="16" rx="2"/><text class="scatter-tick" x="656.0" y="26.0">2.5M · 453s</text><text class="scatter-label" x="194" y="52.0" text-anchor="end">gpt-5.5</text><rect class="token-bar" x="206" y="40.0" width="426.2" height="16" rx="2"/><text class="scatter-tick" x="638.2" y="52.0">2.4M · 504s</text><text class="scatter-label" x="194" y="78.0" text-anchor="end">deepseek-v4-pro</text><rect class="token-bar" x="206" y="66.0" width="419.9" height="16" rx="2"/><text class="scatter-tick" x="631.9" y="78.0">2.4M · 738s</text><text class="scatter-label" x="194" y="104.0" text-anchor="end">minimax-m3</text><rect class="token-bar" x="206" y="92.0" width="387.7" height="16" rx="2"/><text class="scatter-tick" x="599.7" y="104.0">2.2M · 839s</text><text class="scatter-label" x="194" y="130.0" text-anchor="end">laguna-s-2.1</text><rect class="token-bar" x="206" y="118.0" width="386.2" height="16" rx="2"/><text class="scatter-tick" x="598.2" y="130.0">2.2M · 1050s</text><text class="scatter-label" x="194" y="156.0" text-anchor="end">mimo-v2.5-pro</text><rect class="token-bar" x="206" y="144.0" width="378.4" height="16" rx="2"/><text class="scatter-tick" x="590.4" y="156.0">2.2M · 1520s</text><text class="scatter-label" x="194" y="182.0" text-anchor="end">qwen3.7-max</text><rect class="token-bar" x="206" y="170.0" width="320.3" height="16" rx="2"/><text class="scatter-tick" x="532.3" y="182.0">1.8M · 1027s</text><text class="scatter-label" x="194" y="208.0" text-anchor="end">qwen3.6-27b</text><rect class="token-bar" x="206" y="196.0" width="314.8" height="16" rx="2"/><text class="scatter-tick" x="526.8" y="208.0">1.8M · 2804s</text><text class="scatter-label" x="194" y="234.0" text-anchor="end">opus-4.8/claude-code</text><rect class="token-bar" x="206" y="222.0" width="288.1" height="16" rx="2"/><text class="scatter-tick" x="500.1" y="234.0">1.6M · 395s</text><text class="scatter-label" x="194" y="260.0" text-anchor="end">gpt-5.6-sol/api</text><rect class="token-bar" x="206" y="248.0" width="263.4" height="16" rx="2"/><text class="scatter-tick" x="475.4" y="260.0">1.5M · 584s</text><text class="scatter-label" x="194" y="286.0" text-anchor="end">glm-5.2</text><rect class="token-bar" x="206" y="274.0" width="259.8" height="16" rx="2"/><text class="scatter-tick" x="471.8" y="286.0">1.5M · 941s</text><text class="scatter-label" x="194" y="312.0" text-anchor="end">gemma4-12b-think</text><rect class="token-bar" x="206" y="300.0" width="226.0" height="16" rx="2"/><text class="scatter-tick" x="438.0" y="312.0">1.3M · 2203s</text><text class="scatter-label" x="194" y="338.0" text-anchor="end">opus-4.8/api</text><rect class="token-bar" x="206" y="326.0" width="216.9" height="16" rx="2"/><text class="scatter-tick" x="428.9" y="338.0">1.2M · 272s</text><text class="scatter-label" x="194" y="364.0" text-anchor="end">gemma4-31b</text><rect class="token-bar" x="206" y="352.0" width="164.1" height="16" rx="2"/><text class="scatter-tick" x="376.1" y="364.0">934k · 3454s</text><text class="scatter-label" x="194" y="390.0" text-anchor="end">gemma4-12b-nothink</text><rect class="token-bar" x="206" y="378.0" width="45.9" height="16" rx="2"/><text class="scatter-tick" x="257.9" y="390.0">261k · 101s</text><text class="scatter-label" x="194" y="416.0" text-anchor="end">gpt-5.6-sol/codex</text><rect class="token-bar" x="206" y="404.0" width="1.0" height="16" rx="2"/><text class="scatter-tick" x="213.0" y="416.0">0 · 352s</text></svg>
+<p class="muted">Mean total tokens (prompt + completion, with the ReAct loop's resent context counted each turn) per audited case; the trailing number is mean latency/case. Bars are linear, so brute-force models dwarf frugal ones. <strong>Data-quality caveat:</strong> these are the tokens the provider's API <em>reported</em> — some OpenAI-compatible endpoints under-report usage (a near-zero bar with input ≈ output is the tell), so a suspiciously short bar may mean broken metering rather than a frugal model, and that competitor's cost/case is then an underestimate.</p>
+<h2>Per-case results</h2>
+<div style="overflow-x:auto"><table class="matrix"><tr>
+<th class="comp">Competitor</th>
+<th>CVE-2026-27654</th>
+<th>CVE-2026-32316</th>
+<th>CVE-2026-33721</th>
+<th>CVE-2026-5199</th>
+<th>CVE-2026-5446</th>
+<th>CVE-2026-5447</th>
+<th>CVE-2026-5448</th>
+<th>CVE-2026-5466</th>
+<th>CVE-2026-5477</th>
+<th>CVE-2026-5479</th>
+<th>CVE-2026-5500</th>
+<th>CVE-2026-5501</th>
+<th>CVE-2026-7474</th>
+<th>GHSA-9f49-8x56-jmjc</th>
+<th>GHSA-cc7p-2j3x-x7xf</th>
+<th>GHSA-chgx-jx3p-rf73</th>
+<th>GHSA-crr4-7rm4-8gpw</th>
+<th>GHSA-f26g-jm89-4g65</th>
+<th>GHSA-j273-m5qq-6825</th>
+<th>GHSA-mpxh-8fq3-x8mh</th>
+<th>GHSA-w52v-v783-gw97</th>
+<th>GHSA-x9h5-r9v2-vcww</th>
+</tr>
+<tr><td class="comp">gpt-5.6-sol/codex</td>
+<td class="cell-miss">miss</td>
+<td class="cell-hit" title="hit in 2 of 3 trials (flaky)">HIT 2/3</td>
+<td class="cell-hit">HIT</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-hit" title="hit in 2 of 3 trials (flaky)">HIT 2/3</td>
+<td class="cell-hit" title="hit in 2 of 3 trials (flaky)">HIT 2/3</td>
+<td class="cell-hit" title="hit in 1 of 3 trials (flaky)">HIT 1/3</td>
+<td class="cell-hit">HIT</td>
+<td class="cell-hit">HIT</td>
+<td class="cell-hit" title="hit in 2 of 3 trials (flaky)">HIT 2/3</td>
+<td class="cell-partial">part</td>
+<td class="cell-hit" title="hit in 2 of 3 trials (flaky)">HIT 2/3</td>
+<td class="cell-hit">HIT</td>
+<td class="cell-hit" title="hit in 2 of 3 trials (flaky)">HIT 2/3</td>
+<td class="cell-hit" title="hit in 2 of 3 trials (flaky)">HIT 2/3</td>
+<td class="cell-hit">HIT</td>
+<td class="cell-hit">HIT</td>
+<td class="cell-hit" title="hit in 2 of 3 trials (flaky)">HIT 2/3</td>
+</tr>
+<tr><td class="comp">gpt-5.6-sol/api</td>
+<td class="cell-miss">miss</td>
+<td class="cell-hit">HIT</td>
+<td class="cell-hit" title="hit in 1 of 3 trials (flaky)">HIT 1/3</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-hit" title="hit in 1 of 3 trials (flaky)">HIT 1/3</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-partial">part</td>
+<td class="cell-hit" title="hit in 1 of 3 trials (flaky)">HIT 1/3</td>
+<td class="cell-hit" title="hit in 2 of 3 trials (flaky)">HIT 2/3</td>
+<td class="cell-miss">miss</td>
+<td class="cell-partial">part</td>
+<td class="cell-miss">miss</td>
+<td class="cell-hit">HIT</td>
+<td class="cell-hit">HIT</td>
+<td class="cell-hit" title="hit in 1 of 3 trials (flaky)">HIT 1/3</td>
+<td class="cell-miss">miss</td>
+<td class="cell-hit">HIT</td>
+<td class="cell-miss">miss</td>
+</tr>
+<tr><td class="comp">opus-4.8/api</td>
+<td class="cell-miss">miss</td>
+<td class="cell-hit" title="hit in 1 of 3 trials (flaky)">HIT 1/3</td>
+<td class="cell-hit">HIT</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-hit" title="hit in 1 of 3 trials (flaky)">HIT 1/3</td>
+<td class="cell-hit" title="hit in 1 of 3 trials (flaky)">HIT 1/3</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-hit" title="hit in 1 of 3 trials (flaky)">HIT 1/3</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-hit" title="hit in 1 of 3 trials (flaky)">HIT 1/3</td>
+<td class="cell-hit" title="hit in 2 of 3 trials (flaky)">HIT 2/3</td>
+<td class="cell-hit">HIT</td>
+<td class="cell-miss">miss</td>
+</tr>
+<tr><td class="comp">gpt-5.5</td>
+<td class="cell-miss">miss</td>
+<td class="cell-hit">HIT</td>
+<td class="cell-hit" title="hit in 1 of 3 trials (flaky)">HIT 1/3</td>
+<td class="cell-hit" title="hit in 2 of 3 trials (flaky)">HIT 2/3</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-hit" title="hit in 2 of 3 trials (flaky)">HIT 2/3</td>
+<td class="cell-hit" title="hit in 1 of 3 trials (flaky)">HIT 1/3</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-partial">part</td>
+<td class="cell-partial">part</td>
+<td class="cell-hit">HIT</td>
+<td class="cell-hit" title="hit in 2 of 3 trials (flaky)">HIT 2/3</td>
+<td class="cell-miss">miss</td>
+<td class="cell-hit">HIT</td>
+<td class="cell-miss">miss</td>
+</tr>
+<tr><td class="comp">mimo-v2.5-pro</td>
+<td class="cell-miss">miss</td>
+<td class="cell-jerr">jerr</td>
+<td class="cell-jerr">jerr</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-hit" title="hit in 1 of 3 trials (flaky)">HIT 1/3</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-hit" title="hit in 2 of 3 trials (flaky)">HIT 2/3</td>
+<td class="cell-hit" title="hit in 1 of 3 trials (flaky)">HIT 1/3</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-partial">part</td>
+<td class="cell-hit">HIT</td>
+<td class="cell-hit" title="hit in 1 of 3 trials (flaky)">HIT 1/3</td>
+<td class="cell-hit" title="hit in 1 of 2 trials (flaky)">HIT 1/2</td>
+<td class="cell-hit" title="hit in 2 of 3 trials (flaky)">HIT 2/3</td>
+<td class="cell-miss">miss</td>
+</tr>
+<tr><td class="comp">opus-4.8/claude-code</td>
+<td class="cell-miss">miss</td>
+<td class="cell-jerr">jerr</td>
+<td class="cell-jerr">jerr</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-excl">excl</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-hit" title="hit in 2 of 3 trials (flaky)">HIT 2/3</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-partial">part</td>
+<td class="cell-hit" title="hit in 1 of 3 trials (flaky)">HIT 1/3</td>
+<td class="cell-hit">HIT</td>
+<td class="cell-hit" title="hit in 1 of 3 trials (flaky)">HIT 1/3</td>
+<td class="cell-hit">HIT</td>
+<td class="cell-hit" title="hit in 1 of 3 trials (flaky)">HIT 1/3</td>
+</tr>
+<tr><td class="comp">glm-5.2</td>
+<td class="cell-miss">miss</td>
+<td class="cell-jerr">jerr</td>
+<td class="cell-jerr">jerr</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-hit" title="hit in 1 of 3 trials (flaky)">HIT 1/3</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-hit">HIT</td>
+<td class="cell-hit" title="hit in 1 of 3 trials (flaky)">HIT 1/3</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-partial">part</td>
+<td class="cell-hit">HIT</td>
+<td class="cell-hit" title="hit in 1 of 3 trials (flaky)">HIT 1/3</td>
+<td class="cell-miss">miss</td>
+<td class="cell-hit">HIT</td>
+<td class="cell-miss">miss</td>
+</tr>
+<tr><td class="comp">deepseek-v4-pro</td>
+<td class="cell-miss">miss</td>
+<td class="cell-hit" title="hit in 1 of 3 trials (flaky)">HIT 1/3</td>
+<td class="cell-hit" title="hit in 2 of 3 trials (flaky)">HIT 2/3</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-partial">part</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-hit" title="hit in 2 of 3 trials (flaky)">HIT 2/3</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-partial">part</td>
+<td class="cell-partial">part</td>
+<td class="cell-hit" title="hit in 1 of 2 trials (flaky)">HIT 1/2</td>
+<td class="cell-hit" title="hit in 1 of 3 trials (flaky)">HIT 1/3</td>
+<td class="cell-miss">miss</td>
+<td class="cell-hit">HIT</td>
+<td class="cell-miss">miss</td>
+</tr>
+<tr><td class="comp">gemma4-31b</td>
+<td class="cell-miss">miss</td>
+<td class="cell-jerr">jerr</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-hit" title="hit in 1 of 3 trials (flaky)">HIT 1/3</td>
+<td class="cell-miss">miss</td>
+<td class="cell-partial">part</td>
+<td class="cell-partial">part</td>
+<td class="cell-hit" title="hit in 1 of 3 trials (flaky)">HIT 1/3</td>
+<td class="cell-hit" title="hit in 1 of 3 trials (flaky)">HIT 1/3</td>
+<td class="cell-hit" title="hit in 2 of 3 trials (flaky)">HIT 2/3</td>
+<td class="cell-miss">miss</td>
+<td class="cell-hit" title="hit in 2 of 3 trials (flaky)">HIT 2/3</td>
+<td class="cell-miss">miss</td>
+</tr>
+<tr><td class="comp">qwen3.6-27b</td>
+<td class="cell-miss">miss</td>
+<td class="cell-hit">HIT</td>
+<td class="cell-hit" title="hit in 2 of 3 trials (flaky)">HIT 2/3</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-partial">part</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-partial">part</td>
+<td class="cell-partial">part</td>
+<td class="cell-hit">HIT</td>
+<td class="cell-hit">HIT</td>
+<td class="cell-miss">miss</td>
+<td class="cell-hit">HIT</td>
+<td class="cell-miss">miss</td>
+</tr>
+<tr><td class="comp">minimax-m3</td>
+<td class="cell-miss">miss</td>
+<td class="cell-hit" title="hit in 1 of 3 trials (flaky)">HIT 1/3</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-hit" title="hit in 1 of 3 trials (flaky)">HIT 1/3</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-partial">part</td>
+<td class="cell-hit" title="hit in 2 of 3 trials (flaky)">HIT 2/3</td>
+<td class="cell-hit">HIT</td>
+<td class="cell-miss">miss</td>
+<td class="cell-hit">HIT</td>
+<td class="cell-miss">miss</td>
+</tr>
+<tr><td class="comp">qwen3.7-max</td>
+<td class="cell-miss">miss</td>
+<td class="cell-jerr">jerr</td>
+<td class="cell-jerr">jerr</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-partial">part</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-hit" title="hit in 2 of 3 trials (flaky)">HIT 2/3</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-partial">part</td>
+<td class="cell-hit">HIT</td>
+<td class="cell-hit" title="hit in 1 of 3 trials (flaky)">HIT 1/3</td>
+<td class="cell-miss">miss</td>
+<td class="cell-hit">HIT</td>
+<td class="cell-miss">miss</td>
+</tr>
+<tr><td class="comp">gemma4-12b-think</td>
+<td class="cell-miss">miss</td>
+<td class="cell-hit" title="hit in 1 of 3 trials (flaky)">HIT 1/3</td>
+<td class="cell-miss">miss</td>
+<td class="cell-hit" title="hit in 1 of 3 trials (flaky)">HIT 1/3</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-partial">part</td>
+<td class="cell-partial">part</td>
+<td class="cell-partial">part</td>
+<td class="cell-miss">miss</td>
+<td class="cell-hit" title="hit in 1 of 3 trials (flaky)">HIT 1/3</td>
+<td class="cell-miss">miss</td>
+<td class="cell-hit" title="hit in 2 of 3 trials (flaky)">HIT 2/3</td>
+<td class="cell-miss">miss</td>
+</tr>
+<tr><td class="comp">deepseek-v4-flash</td>
+<td class="cell-miss">miss</td>
+<td class="cell-jerr">jerr</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-jerr">jerr</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-jerr">jerr</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-partial">part</td>
+<td class="cell-miss">miss</td>
+<td class="cell-hit" title="hit in 2 of 3 trials (flaky)">HIT 2/3</td>
+<td class="cell-hit">HIT</td>
+<td class="cell-miss">miss</td>
+<td class="cell-hit">HIT</td>
+<td class="cell-miss">miss</td>
+</tr>
+<tr><td class="comp">laguna-s-2.1</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-hit" title="hit in 1 of 3 trials (flaky)">HIT 1/3</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-hit" title="hit in 2 of 3 trials (flaky)">HIT 2/3</td>
+<td class="cell-miss">miss</td>
+</tr>
+<tr><td class="comp">gemma4-12b-nothink</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-miss">miss</td>
+<td class="cell-hit" title="hit in 2 of 3 trials (flaky)">HIT 2/3</td>
+<td class="cell-miss">miss</td>
+<td class="cell-hit">HIT</td>
+<td class="cell-miss">miss</td>
+</tr>
+</table></div>
+<p class="muted">HIT = detected; part = right spot, wrong bug (half credit, eligible non-hit); miss = looked, found nothing; jerr = judge undetermined (out of denominator); refu = model refused the task (out of denominator, never a miss); excl = auth/infra failure (never a miss); · = not run. A HIT marked <code>n/N</code> was found in only n of N trials (flaky); a bare HIT was found in every trial.</p>
+<footer>Generated by Nelson at 2026-07-23 14:48:23</footer></body></html>
